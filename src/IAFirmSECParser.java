@@ -372,9 +372,12 @@ public class IAFirmSECParser {
             writer = new FileWriter(new File(Config.BROCHURE_OUTPUT_PATH + "/" + "IAPD_Found.csv"));
             
             Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .withFirstRecordAsHeader()
-                    .withQuote('"')
-                    .withQuoteMode(QuoteMode.MINIMAL)
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setQuote('"')
+                    .setQuoteMode(QuoteMode.MINIMAL)
+                    .build()
                     .parse(reader);
             
             writer.write(Config.FOUND_FILE_HEADER + System.lineSeparator());
@@ -483,9 +486,12 @@ public class IAFirmSECParser {
             writer = new FileWriter(new File(Config.BROCHURE_OUTPUT_PATH + "/" + Config.CUSTODIAL_SERVICES_FILE));
             
             Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .withFirstRecordAsHeader()
-                    .withQuote('"')
-                    .withQuoteMode(QuoteMode.MINIMAL)
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setQuote('"')
+                    .setQuoteMode(QuoteMode.MINIMAL)
+                    .build()
                     .parse(reader);
             
             for (CSVRecord csvRecord : records) {

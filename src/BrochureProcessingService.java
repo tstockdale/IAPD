@@ -1,8 +1,13 @@
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.regex.Matcher;
 
@@ -29,13 +34,15 @@ public class BrochureProcessingService {
      * @throws BrochureProcessingException if processing fails
      */
     public void processBrochures(String inputFilePath) throws BrochureProcessingException {
-        try (Reader reader = new FileReader(inputFilePath);
-             FileWriter writer = new FileWriter(new File(Config.BROCHURE_OUTPUT_PATH + "/" + "IAPD_Found.csv"))) {
+        try (Reader reader = Files.newBufferedReader(Paths.get(inputFilePath), StandardCharsets.UTF_8);
+             BufferedWriter writer = Files.newBufferedWriter(Paths.get(Config.BROCHURE_OUTPUT_PATH + "/" + "IAPD_Found.csv"), StandardCharsets.UTF_8)) {
             
             Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .withFirstRecordAsHeader()
-                    .withQuote('"')
-                    .withQuoteMode(QuoteMode.MINIMAL)
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setQuoteMode(QuoteMode.MINIMAL)
+                    .build()
                     .parse(reader);
             
             writer.write(Config.FOUND_FILE_HEADER + System.lineSeparator());
@@ -60,7 +67,7 @@ public class BrochureProcessingService {
     /**
      * Processes a single brochure record
      */
-    private void processSingleBrochure(CSVRecord csvRecord, FileWriter writer) throws Exception {
+    private void processSingleBrochure(CSVRecord csvRecord, Writer writer) throws Exception {
         Map<String, String> recordMap = csvRecord.toMap();
         String brochureURL = recordMap.get("BrochureURL");
         String firmCrdNb = recordMap.get("FirmCrdNb");

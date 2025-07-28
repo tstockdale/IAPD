@@ -1,4 +1,5 @@
 import java.io.FileWriter;
+import java.io.Writer;
 import java.util.Map;
 
 /**
@@ -9,7 +10,7 @@ public class CSVWriterService {
     /**
      * Writes brochure analysis results to CSV
      */
-    public void writeBrochureAnalysis(FileWriter writer, Map<String, String> recordMap, 
+    public void writeBrochureAnalysis(Writer writer, Map<String, String> recordMap, 
                                      BrochureAnalysis analysis, String fileName, String brochureURL) throws Exception {
         writer.write(recordMap.get("SECRgmCD") + ",");
         writer.write(recordMap.get("FirmCrdNb") + ",");
@@ -45,7 +46,7 @@ public class CSVWriterService {
     /**
      * Writes custodial services record to CSV
      */
-    public void writeCustodialServicesRecord(FileWriter writer, Map<String, String> recordMap, 
+    public void writeCustodialServicesRecord(Writer writer, Map<String, String> recordMap, 
                                             String custodialText, String fileName, String brochureURL) throws Exception {
         writer.write('"' + custodialText.replaceAll(",", " ").replaceAll("\"", "'") + '"' + ",");
         writer.write(recordMap.get("SECRgmCD") + ",");
