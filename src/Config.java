@@ -1,0 +1,32 @@
+/**
+ * Configuration constants for the IAPD Parser application
+ */
+public final class Config {
+    
+    // File and path constants
+    public static final String ENCODING = "ISO-8859-1";
+    public static final String INPUT_FILE = "C:/Users/stoctom/Downloads/IA_FIRM_SEC_Feed_04_07_2025.xml";
+    public static final String OUTPUT_FILE_PATH = "C:/Users/stoctom/Downloads/";
+    public static final String OUTPUT_FILE_NAME = "IAFirmSECData_20250407.csv";
+    public static final String BROCHURE_OUTPUT_PATH = "C:\\Users\\stoctom\\OneDrive - ISS\\Work\\IAPD\\Output";
+    public static final String BROCHURE_INPUT_PATH = "C:\\Users\\stoctom\\OneDrive - ISS\\Work\\IAPD\\Input";
+    public static final String CUSTODIAL_SERVICES_FILE = "CustodialServices.csv";
+    
+    // HTTP constants
+    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
+    public static final int BUFFER_SIZE = 4096;
+    
+    // URL constants
+    public static final String FIRM_URL_BASE = "https://adviserinfo.sec.gov/Firm/167688";
+    public static final String FIRM_API_URL_FORMAT = "https://api.adviserinfo.sec.gov/search/firm/%s?hl=true&nrows=12&query=&start=0&wt=json";
+    public static final String BROCHURE_URL_BASE = "https://files.adviserinfo.sec.gov/IAPD/Content/Common/crd_iapd_Brochure.aspx?BRCHR_VRSN_ID=";
+    
+    // CSV headers
+    public static final String FIRM_HEADER = "SECRgmCD,FirmCrdNb,SECMb,Business Name,Legal Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Fax #,Registration Firm Type,Registration State,Registration Date,Filing Date,Filing Version,Total Employees,AUM,Total Accounts,BrochureURL";
+    public static final String FOUND_FILE_HEADER = "SECRgmCD,FirmCrdNb,SECMb,Business Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Filing Date,AUM,Total Accounts,Total Employees,Proxy Provider, Class Action Provider,ESG Provider, ESG Investment Language, File Name,Brochure URL,Email -- Compliance,Email -- Proxy,Email -- Brochure,Email -- Item 17,Email -- All,Does Not Vote String";
+    
+    // Private constructor to prevent instantiation
+    private Config() {
+        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
+    }
+}
