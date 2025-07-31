@@ -1,4 +1,5 @@
 import java.io.File;
+import java.nio.file.Path;
 
 /**
  * Refactored Investment Adviser Public Disclosure (IAPD) Parser
@@ -30,6 +31,7 @@ public class IAFirmSECParserRefactored {
     public static void main(String[] args) {
         IAFirmSECParserRefactored parser = new IAFirmSECParserRefactored();
         try {
+        	System.out.println("Working Directory = " + System.getProperty("user.dir"));
             parser.downloadAndProcessLatestIAPDData();
         } catch (Exception e) {
             System.err.println("Error in main execution: " + e.getMessage());
@@ -55,7 +57,7 @@ public class IAFirmSECParserRefactored {
                 System.out.println("IAPD data file location: " + extractedFile.getAbsolutePath());
                 
                 // Process the XML file and get the output file path
-                String outputFilePath = xmlProcessingService.processXMLFile(extractedFile);
+                Path outputFilePath = xmlProcessingService.processXMLFile(extractedFile);
                 
                 if (outputFilePath != null) {
                     System.out.println("XML processing completed. Output file: " + outputFilePath);
@@ -74,77 +76,5 @@ public class IAFirmSECParserRefactored {
             e.printStackTrace();
         }
     }
-    
  
-
-    /**
-     * Processes the XML file containing firm data using the default input file
-     */
-    public void processXMLFile() {
-        try {
-            String outputFilePath = xmlProcessingService.processDefaultXMLFile();
-            if (outputFilePath != null) {
-                System.out.println("XML processing completed. Output file: " + outputFilePath);
-            } else {
-                System.err.println("Failed to process XML file");
-            }
-        } catch (XMLProcessingException e) {
-            System.err.println("Error processing XML file: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Processes downloaded brochures and extracts information using the default input file
-     */
-    public void processBrochures() {
-        try {
-            brochureProcessingService.processDefaultBrochures();
-            System.out.println("Brochure processing completed.");
-        } catch (BrochureProcessingException e) {
-            System.err.println("Error processing brochures: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Processes downloaded brochures and extracts information
-     * @param inputFilePath the path to the CSV file containing firm data
-     */
-    public void processBrochures(String inputFilePath) {
-        try {
-            brochureProcessingService.processBrochures(inputFilePath);
-            System.out.println("Brochure processing completed for file: " + inputFilePath);
-        } catch (BrochureProcessingException e) {
-            System.err.println("Error processing brochures: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    
-    /**
-     * Processes a single PDF brochure for testing purposes
-     */
-    public void processOnePDF() {
-        String path = "C:/Users/stoctom/Work/IAPD/Output/283630_902136.pdf";
-        try {
-            brochureProcessingService.processOnePDF(path);
-        } catch (BrochureProcessingException e) {
-            System.err.println("Error processing single PDF: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Processes a single PDF brochure for testing purposes
-     * @param pdfPath the path to the PDF file to process
-     */
-    public void processOnePDF(String pdfPath) {
-        try {
-            brochureProcessingService.processOnePDF(pdfPath);
-        } catch (BrochureProcessingException e) {
-            System.err.println("Error processing single PDF: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 }

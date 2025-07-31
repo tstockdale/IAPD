@@ -1,12 +1,11 @@
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -33,8 +32,8 @@ public class BrochureProcessingService {
      * @param inputFilePath the path to the CSV file containing firm data
      * @throws BrochureProcessingException if processing fails
      */
-    public void processBrochures(String inputFilePath) throws BrochureProcessingException {
-        try (Reader reader = Files.newBufferedReader(Paths.get(inputFilePath), StandardCharsets.UTF_8);
+    public void processBrochures(Path inputFilePath) throws BrochureProcessingException {
+        try (Reader reader = Files.newBufferedReader(inputFilePath, StandardCharsets.UTF_8);
              BufferedWriter writer = Files.newBufferedWriter(Paths.get(Config.BROCHURE_OUTPUT_PATH + "/" + "IAPD_Found.csv"), StandardCharsets.UTF_8)) {
             
             Iterable<CSVRecord> records = CSVFormat.EXCEL
@@ -55,14 +54,7 @@ public class BrochureProcessingService {
         }
     }
     
-    /**
-     * Processes downloaded brochures using the default input file
-     * @throws BrochureProcessingException if processing fails
-     */
-    public void processDefaultBrochures() throws BrochureProcessingException {
-        String inputFilePath = Config.BROCHURE_INPUT_PATH + "/" + Config.OUTPUT_FILE_NAME;
-        processBrochures(inputFilePath);
-    }
+
     
     /**
      * Processes a single brochure record

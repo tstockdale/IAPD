@@ -182,8 +182,15 @@ tramp
 !application.template
 
 # Ignore large data files but keep small test files
-**/large_data/
+**/large_data/*
 **/test_data/*.xml
 **/test_data/*.csv
 !**/test_data/sample_*.xml
 !**/test_data/sample_*.csv
+
+#Ignore data files
+**/data/xml_file/*.xml
+**/data/input/*.csv
+**/data/output/*.csv
+**/data/xml_file/*.gz
+**data/brochures/*.pdf

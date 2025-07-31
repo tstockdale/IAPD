@@ -5,12 +5,9 @@ public final class Config {
     
     // File and path constants
     public static final String ENCODING = "ISO-8859-1";
-    public static final String INPUT_FILE = "C:/Users/stoctom/Downloads/IA_FIRM_SEC_Feed_04_07_2025.xml";
     public static final String OUTPUT_FILE_PATH = "C:/Users/stoctom/Downloads/";
-    public static final String OUTPUT_FILE_NAME = "IAFirmSECData_20250407.csv";
     public static final String BROCHURE_OUTPUT_PATH = "C:\\Users\\stoctom\\OneDrive - ISS\\Work\\IAPD\\Output";
     public static final String BROCHURE_INPUT_PATH = "C:\\Users\\stoctom\\OneDrive - ISS\\Work\\IAPD\\Input";
-    public static final String CUSTODIAL_SERVICES_FILE = "CustodialServices.csv";
     
     // HTTP constants
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";

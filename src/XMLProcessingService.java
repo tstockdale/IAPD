@@ -3,6 +3,8 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.util.regex.Matcher;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
@@ -24,11 +26,17 @@ public class XMLProcessingService {
      * @return the path of the output file that was written
      * @throws XMLProcessingException if processing fails
      */
-    public String processXMLFile(File xmlFile) throws XMLProcessingException {
+   /**
+ * Processes the XML file containing firm data
+ * @param xmlFile the XML file to process
+ * @return the Path of the output file that was written
+ * @throws XMLProcessingException if processing fails
+ */
+    public Path processXMLFile(File xmlFile) throws XMLProcessingException {
         String outputFileName = constructOutputFileName(xmlFile.getName());
-        String outputFilePath = Config.BROCHURE_INPUT_PATH + outputFileName;
+        Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
-        try (FileWriter firmWriter = new FileWriter(new File(outputFilePath), false)) {
+        try (FileWriter firmWriter = new FileWriter(outputFilePath.toFile(), false)) {
             firmWriter.write(Config.FIRM_HEADER + System.lineSeparator());
             parseXML(xmlFile, firmWriter);
             return outputFilePath;
@@ -42,7 +50,7 @@ public class XMLProcessingService {
      * @return the path of the output file that was written
      * @throws XMLProcessingException if processing fails
      */
-    public String processDefaultXMLFile() throws XMLProcessingException {
+    public Path processDefaultXMLFile() throws XMLProcessingException {
         File xmlFile = new File(Config.INPUT_FILE);
         return processXMLFile(xmlFile);
     }
@@ -81,8 +89,9 @@ public class XMLProcessingService {
             
             XMLInputFactory factory = XMLInputFactory.newInstance();
             XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
-            
-            while (reader.hasNext()) {
+            int index = 0;
+            while (reader.hasNext() && index < 10) {
+            	index++;
                 reader.next();
                 if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
                     "Firm".equals(reader.getLocalName())) {
