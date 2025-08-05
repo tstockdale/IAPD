@@ -119,6 +119,7 @@ public class ProcessingLogger {
     
     // Failure counters
     private static final AtomicInteger firmsWithoutBrochures = new AtomicInteger(0);
+    private static final AtomicInteger firmsWithBrochures = new AtomicInteger(0);
     private static final AtomicInteger brochureDownloadFailures = new AtomicInteger(0);
     private static final AtomicInteger filenameParsingFailures = new AtomicInteger(0);
     private static final AtomicInteger totalFirmsProcessed = new AtomicInteger(0);
@@ -144,6 +145,11 @@ public class ProcessingLogger {
         logger.warn("Firms without brochures count incremented to: {}", count);
     }
     
+    public static void incrementFirmsWithBrochures() {
+    	int count = firmsWithBrochures.incrementAndGet();
+    	logger.info("Firms with brochures count incremented to: {}", count);
+    }
+    
     public static void incrementBrochureDownloadFailures() {
         int count = brochureDownloadFailures.incrementAndGet();
         logger.warn("Brochure download failure count incremented to: {}", count);
@@ -166,7 +172,7 @@ public class ProcessingLogger {
         logger.info(separator);
         logger.info("Total firms processed: {}", totalFirmsProcessed.get());
         logger.info("Firms without brochures: {}", firmsWithoutBrochures.get());
-        logger.info("Brochures downloaded successfully: {}", totalFirmsProcessed.get() - (firmsWithoutBrochures.get() + brochureDownloadFailures.get()));
+        logger.info("Brochures downloaded successfully: {}", firmsWithBrochures.get());
         logger.info("Brochure download failures: {}", brochureDownloadFailures.get());
         logger.info("Filename parsing failures: {}", filenameParsingFailures.get());
         
@@ -188,6 +194,10 @@ public class ProcessingLogger {
     // Getter methods for accessing counter values if needed
     public static int getFirmsWithoutBrochures() {
         return firmsWithoutBrochures.get();
+    }
+    
+    public static int getFirmsWithBrochures() {
+    	return firmsWithBrochures.get();
     }
     
     public static int getBrochureDownloadFailures() {

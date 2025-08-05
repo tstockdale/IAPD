@@ -266,6 +266,7 @@ public class XMLProcessingService {
                         // Try to download the brochure (this may also fail)
                         try {
                             downloadService.downloadBrochure(foundBrochureURL, fileName);
+                            ProcessingLogger.incrementFirmsWithBrochures();
                         } catch (Exception downloadException) {
                             ProcessingLogger.logWarning("Failed to download brochure for firm " + firmCrdNb + 
                                                        ": " + downloadException.getMessage());
