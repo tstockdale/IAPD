@@ -20,7 +20,7 @@ public class ProcessingLoggerTest {
         
         // Test counter methods
         ProcessingLogger.incrementTotalFirmsProcessed();
-        ProcessingLogger.incrementBrochureUrlFailures();
+        ProcessingLogger.incrementFirmsWithoutBrochures();
         ProcessingLogger.incrementBrochureDownloadFailures();
         ProcessingLogger.incrementFilenameParsingFailures();
         
