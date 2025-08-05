@@ -165,7 +165,8 @@ public class ProcessingLogger {
         logger.info("PROCESSING SUMMARY");
         logger.info(separator);
         logger.info("Total firms processed: {}", totalFirmsProcessed.get());
-        logger.info("Brochure URL failures: {}", firmsWithoutBrochures.get());
+        logger.info("Firms without brochures: {}", firmsWithoutBrochures.get());
+        logger.info("Brochures downloaded successfully: {}", totalFirmsProcessed.get() - (firmsWithoutBrochures.get() + brochureDownloadFailures.get()));
         logger.info("Brochure download failures: {}", brochureDownloadFailures.get());
         logger.info("Filename parsing failures: {}", filenameParsingFailures.get());
         

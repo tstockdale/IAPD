@@ -294,7 +294,7 @@ public class XMLProcessingService {
         }, "Get brochure URL for firm " + firmCrdNb);
         
         if (brochureURL == null) {
-            ProcessingLogger.incrementBrochureUrlFailures();
+            ProcessingLogger.incrementFirmsWithoutBrochures();
         }
         
         return brochureURL;
