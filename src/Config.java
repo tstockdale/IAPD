@@ -3,11 +3,13 @@
  */
 public final class Config {
     
-    // File and path constants
+    // File and path constants;
     public static final String ENCODING = "ISO-8859-1";
-    public static final String OUTPUT_FILE_PATH = "C:/Users/stoctom/Downloads/";
-    public static final String BROCHURE_OUTPUT_PATH = "C:\\Users\\stoctom\\OneDrive - ISS\\Work\\IAPD\\Output";
-    public static final String BROCHURE_INPUT_PATH = "C:\\Users\\stoctom\\OneDrive - ISS\\Work\\IAPD\\Input";
+    public static final String FIRM_FILE_PATH = "./Data/FirmFiles";
+    public static final String DOWNLOAD_PATH = "./Data/Downloads";
+    public static final String BROCHURE_OUTPUT_PATH = "./Data/Output"; 
+    public static final String BROCHURE_INPUT_PATH = "./Data/Input";
+    public static final String LOG_PATH = "./Data/Logs";
     
     // HTTP constants
     public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";

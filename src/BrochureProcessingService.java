@@ -73,7 +73,10 @@ public class BrochureProcessingService {
             return;
         }
         
-        File brochureFile = new File(Config.BROCHURE_OUTPUT_PATH + "/" + firmCrdNb + "_" + matcher.group(1) + ".pdf");
+        File parentFolder = new File(Config.DOWNLOAD_PATH);
+        String fileName = firmCrdNb + "_" + matcher.group(1) + ".pdf";
+        
+        File brochureFile = new File(parentFolder, fileName);
         if (!brochureFile.exists()) {
             return;
         }
@@ -96,13 +99,13 @@ public class BrochureProcessingService {
         
         try (FileInputStream fis = new FileInputStream(file)) {
             String text = PdfTextExtractor.getBrochureText(fis);
-            System.out.println("Extracted text length: " + text.length());
+            ProcessingLogger.logInfo("Extracted text length: " + text.length());
             
             BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text);
-            System.out.println("Proxy Providers: " + analysis.getProxyProvider().toString());
-            System.out.println("Class Action Providers: " + analysis.getClassActionProvider().toString());
-            System.out.println("ESG Providers: " + analysis.getEsgProvider().toString());
-            System.out.println("Email addresses found: " + analysis.getEmailSet().size());
+            ProcessingLogger.logInfo("Proxy Providers: " + analysis.getProxyProvider().toString());
+            ProcessingLogger.logInfo("Class Action Providers: " + analysis.getClassActionProvider().toString());
+            ProcessingLogger.logInfo("ESG Providers: " + analysis.getEsgProvider().toString());
+            ProcessingLogger.logInfo("Email addresses found: " + analysis.getEmailSet().size());
         } catch (Exception e) {
             throw new BrochureProcessingException("Error processing single PDF: " + pdfPath, e);
         }

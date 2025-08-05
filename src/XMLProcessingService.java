@@ -1,10 +1,12 @@
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.InputStream;
 import java.util.regex.Matcher;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
@@ -33,27 +35,28 @@ public class XMLProcessingService {
  * @throws XMLProcessingException if processing fails
  */
     public Path processXMLFile(File xmlFile) throws XMLProcessingException {
+        ProcessingLogger.logInfo("Starting XML processing for file: " + xmlFile.getName());
+        ProcessingLogger.resetCounters();
+        
         String outputFileName = constructOutputFileName(xmlFile.getName());
         Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
-        try (FileWriter firmWriter = new FileWriter(outputFilePath.toFile(), false)) {
+        try (OutputStreamWriter firmWriter = new OutputStreamWriter(
+                new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8)) {
             firmWriter.write(Config.FIRM_HEADER + System.lineSeparator());
             parseXML(xmlFile, firmWriter);
+            
+            ProcessingLogger.logInfo("XML processing completed for file: " + xmlFile.getName());
+            ProcessingLogger.printProcessingSummary();
+            
             return outputFilePath;
         } catch (Exception e) {
+            ProcessingLogger.logError("Critical error processing XML file: " + xmlFile.getName(), e);
             throw new XMLProcessingException("Error processing XML file: " + xmlFile.getName(), e);
         }
     }
     
-    /**
-     * Processes the XML file using the default input file
-     * @return the path of the output file that was written
-     * @throws XMLProcessingException if processing fails
-     */
-    public Path processDefaultXMLFile() throws XMLProcessingException {
-        File xmlFile = new File(Config.INPUT_FILE);
-        return processXMLFile(xmlFile);
-    }
+  
     
     /**
      * Constructs the output file name based on the input file name
@@ -69,13 +72,17 @@ public class XMLProcessingService {
                 String day = matcher.group(2);
                 String year = matcher.group(3);
                 
-                return "IA_FIRM_SEC_DATA" + year + month + day + ".csv";
+                String outputFileName = "IA_FIRM_SEC_DATA_" + year + month + day + ".csv";
+                ProcessingLogger.logInfo("Successfully parsed date from filename: " + inputFileName + " -> " + outputFileName);
+                return outputFileName;
             } else {
-                System.err.println("Warning: Could not parse date from input file name: " + inputFileName);
+                ProcessingLogger.logWarning("Could not parse date from input file name: " + inputFileName + ". Using timestamp-based name.");
+                ProcessingLogger.incrementFilenameParsingFailures();
                 return "IA_FIRM_SEC_DATA_" + System.currentTimeMillis() + ".csv";
             }
         } catch (Exception e) {
-            System.err.println("Error constructing output file name: " + e.getMessage());
+            ProcessingLogger.logError("Error constructing output file name for: " + inputFileName, e);
+            ProcessingLogger.incrementFilenameParsingFailures();
             return "IA_FIRM_SEC_DATA_" + System.currentTimeMillis() + ".csv";
         }
     }
@@ -83,14 +90,14 @@ public class XMLProcessingService {
     /**
      * Parses the XML file and extracts firm information
      */
-    private void parseXML(File xmlFile, FileWriter firmWriter) throws Exception {
+    private void parseXML(File xmlFile, OutputStreamWriter firmWriter) throws Exception {
         try (InputStream in = new FileInputStream(xmlFile)) {
-            System.out.println("Processing: " + xmlFile.getCanonicalPath());
+            ProcessingLogger.logInfo("Processing: " + xmlFile.getCanonicalPath());
             
             XMLInputFactory factory = XMLInputFactory.newInstance();
             XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
             int index = 0;
-            while (reader.hasNext() && index < 10) {
+            while (reader.hasNext() && index < 100000) {
             	index++;
                 reader.next();
                 if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
@@ -106,13 +113,12 @@ public class XMLProcessingService {
     /**
      * Processes a single firm record from the XML
      */
-    private boolean processNextFirm(XMLStreamReader reader, FileWriter firmWriter) throws Exception {
+    private boolean processNextFirm(XMLStreamReader reader, OutputStreamWriter firmWriter) throws Exception {
         FirmDataBuilder firmBuilder = new FirmDataBuilder();
         
         while (reader.hasNext()) {
             if (reader.getEventType() == XMLStreamReader.START_ELEMENT) {
                 String elementName = reader.getLocalName();
-                System.out.println("Processing element: " + elementName);
                 
                 switch (elementName) {
                     case "Info":
@@ -137,13 +143,16 @@ public class XMLProcessingService {
             } else if (reader.getEventType() == XMLStreamReader.END_ELEMENT && 
                       "Firm".equalsIgnoreCase(reader.getLocalName())) {
                 
+                // Increment firm counter
+                ProcessingLogger.incrementTotalFirmsProcessed();
+                
                 // Get brochure URL and write complete record
                 String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb());
                 firmBuilder.setBrochureURL(brochureURL);
                 
                 writeFirmRecord(firmWriter, firmBuilder.build());
                 
-                Thread.sleep(2000); // Rate limiting
+                Thread.sleep(1000); // Rate limiting
                 return true;
             }
             reader.next();
@@ -202,7 +211,7 @@ public class XMLProcessingService {
     /**
      * Writes a complete firm record to CSV
      */
-    private void writeFirmRecord(FileWriter writer, FirmData firmData) throws Exception {
+    private void writeFirmRecord(OutputStreamWriter writer, FirmData firmData) throws Exception {
         writer.write(firmData.getSECRgnCD() + ",");
         writer.write(firmData.getFirmCrdNb() + ",");
         writer.write(firmData.getSECNb() + ",");
@@ -239,25 +248,55 @@ public class XMLProcessingService {
     }
     
     /**
-     * Retrieves the brochure URL for a given firm CRD number
+     * Retrieves the brochure URL for a given firm CRD number with retry logic
      */
     private String getBrochureURL(String firmCrdNb) {
-        try {
-            String url = String.format(Config.FIRM_API_URL_FORMAT, firmCrdNb);
-            String response = HttpUtils.getHTTPSResponse(url);
-            
-            if (response != null) {
-                Matcher matcher = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN.matcher(response);
-                if (matcher.find()) {
-                    String brochureURL = Config.BROCHURE_URL_BASE + matcher.group(1);
-                    String fileName = firmCrdNb + "_" + matcher.group(1) + ".pdf";
-                    downloadService.downloadBrochure(brochureURL, fileName);
-                    return brochureURL;
+        // Use retry logic for getting brochure URL
+        String brochureURL = RetryUtils.executeWithRetry(() -> {
+            try {
+                String url = String.format(Config.FIRM_API_URL_FORMAT, firmCrdNb);
+                String response = HttpUtils.getHTTPSResponse(url);
+                
+                if (response != null) {
+                    Matcher matcher = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN.matcher(response);
+                    if (matcher.find()) {
+                        String foundBrochureURL = Config.BROCHURE_URL_BASE + matcher.group(1);
+                        String fileName = firmCrdNb + "_" + matcher.group(1) + ".pdf";
+                        
+                        // Try to download the brochure (this may also fail)
+                        try {
+                            downloadService.downloadBrochure(foundBrochureURL, fileName);
+                        } catch (Exception downloadException) {
+                            ProcessingLogger.logWarning("Failed to download brochure for firm " + firmCrdNb + 
+                                                       ": " + downloadException.getMessage());
+                            ProcessingLogger.incrementBrochureDownloadFailures();
+                            // Continue processing even if download fails - we still have the URL
+                        }
+                        
+                        return foundBrochureURL;
+                    } else {
+                        ProcessingLogger.logWarning("No brochure version ID found in API response for firm: " + firmCrdNb);
+                        return null;
+                    }
+                } else {
+                    throw new RuntimeException("No response received from API for firm: " + firmCrdNb);
+                }
+            } catch (Exception e) {
+                // Check if this is a transient exception that should be retried
+                if (RetryUtils.isTransientException(e)) {
+                    throw new RuntimeException("Transient error getting brochure URL for firm " + firmCrdNb, e);
+                } else {
+                    // Non-transient error, don't retry
+                    ProcessingLogger.logError("Non-transient error getting brochure URL for firm " + firmCrdNb, e);
+                    return null;
                 }
             }
-        } catch (Exception e) {
-            System.err.println("Error getting brochure URL for firm " + firmCrdNb + ": " + e.getMessage());
+        }, "Get brochure URL for firm " + firmCrdNb);
+        
+        if (brochureURL == null) {
+            ProcessingLogger.incrementBrochureUrlFailures();
         }
-        return null;
+        
+        return brochureURL;
     }
 }

@@ -40,7 +40,7 @@ public class HttpUtils {
                 String responseBody = scanner.hasNext() ? scanner.next() : "";
                 scanner.close();
                 
-                System.out.println("API Response received for: " + urlString);
+                ProcessingLogger.logInfo("API Response received for: " + urlString);
                 return responseBody;
             } else {
                 System.err.println("HTTP request failed. Response code: " + connection.getResponseCode());
@@ -87,7 +87,7 @@ public class HttpUtils {
                 logDownloadInfo(connection, fileName);
                 
                 inputStream = connection.getInputStream();
-                File parentFolder = new File(Config.BROCHURE_OUTPUT_PATH);
+                File parentFolder = new File(Config.DOWNLOAD_PATH);
                 if (!parentFolder.exists()) {
                     parentFolder.mkdirs();
                 }
@@ -101,7 +101,7 @@ public class HttpUtils {
                     outputStream.write(buffer, 0, bytesRead);
                 }
                 
-                System.out.println("File downloaded: " + fileName);
+                ProcessingLogger.logInfo("File downloaded: " + fileName);
             } else {
                 System.err.println("Download failed. Server response: " + connection.getResponseCode());
             }
@@ -140,10 +140,10 @@ public class HttpUtils {
      * Logs download information
      */
     private static void logDownloadInfo(HttpsURLConnection connection, String fileName) {
-        System.out.println("Content-Type = " + connection.getContentType());
-        System.out.println("Content-Disposition = " + connection.getHeaderField("Content-Disposition"));
-        System.out.println("Content-Length = " + connection.getContentLength());
-        System.out.println("fileName = " + fileName);
+        ProcessingLogger.logInfo("Content-Type = " + connection.getContentType());
+        ProcessingLogger.logInfo("Content-Disposition = " + connection.getHeaderField("Content-Disposition"));
+        ProcessingLogger.logInfo("Content-Length = " + connection.getContentLength());
+        ProcessingLogger.logInfo("fileName = " + fileName);
     }
     
     /**
@@ -187,15 +187,15 @@ public class HttpUtils {
             String downloadUrl = String.format("https://reports.adviserinfo.sec.gov/reports/CompilationReports/%s", fileName);
             
             try {
-                System.out.println("Attempting to download: " + downloadUrl);
+                ProcessingLogger.logInfo("Attempting to download: " + downloadUrl);
                 File downloadedFile = downloadHTTPSFile(downloadUrl, fileName);
                 
                 if (downloadedFile != null && downloadedFile.exists()) {
-                    System.out.println("Successfully downloaded IAPD XML data: " + fileName);
+                    ProcessingLogger.logInfo("Successfully downloaded IAPD XML data: " + fileName);
                     return downloadedFile;
                 }
             } catch (Exception e) {
-                System.out.println("Failed to download " + fileName + ": " + e.getMessage());
+                ProcessingLogger.logWarning("Failed to download " + fileName + ": " + e.getMessage());
                 // Continue to try previous day
             }
         }
@@ -219,11 +219,11 @@ public class HttpUtils {
         String fileName = String.format("IA_FIRM_SEC_Feed_ia%s01%s.xml.gz", monthStr, yearStr.substring(2));
         String downloadUrl = String.format("https://reports.adviserinfo.sec.gov/reports/CompilationReports/%s", fileName);
         
-        System.out.println("Downloading IAPD data: " + downloadUrl);
+        ProcessingLogger.logInfo("Downloading IAPD data: " + downloadUrl);
         File downloadedFile = downloadHTTPSFile(downloadUrl, fileName);
         
         if (downloadedFile != null && downloadedFile.exists()) {
-            System.out.println("Successfully downloaded IAPD data: " + fileName);
+            ProcessingLogger.logInfo("Successfully downloaded IAPD data: " + fileName);
             return downloadedFile;
         } else {
             throw new Exception("Failed to download IAPD data file: " + fileName);
@@ -267,7 +267,7 @@ public class HttpUtils {
                 bos.write(buffer, 0, bytesRead);
             }
             
-            System.out.println("Extracted GZ file: " + extractedFileName);
+            ProcessingLogger.logInfo("Extracted GZ file: " + extractedFileName);
             return extractedFile;
             
         } finally {

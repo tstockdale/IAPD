@@ -1,4 +1,3 @@
-import java.io.FileWriter;
 import java.io.Writer;
 import java.util.Map;
 
@@ -68,20 +67,5 @@ public class CSVWriterService {
         writer.write(brochureURL);
         writer.write(System.lineSeparator());
         writer.flush();
-    }
-    
-    /**
-     * Helper method to safely get value from record map
-     */
-    private String getRecordValue(Map<String, String> recordMap, String key) {
-        String value = recordMap.get(key);
-        return value != null ? value : "";
-    }
-    
-    /**
-     * Helper method to sanitize string values for CSV output
-     */
-    private String sanitizeValue(String value) {
-        return value != null ? value.replaceAll("\"", "") : "";
     }
 }

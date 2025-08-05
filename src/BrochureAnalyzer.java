@@ -135,7 +135,7 @@ public class BrochureAnalyzer {
                 analysis.getNoVoteString().append(matcher.group(0));
                 StringBuilder message = new StringBuilder("No vote pattern found: ");
                 message.append(analysis.getNoVoteString().toString());
-                System.out.println(message.toString());
+                ProcessingLogger.logInfo(message.toString());
                 if (analysis.getProxyProvider().length() == 0) {
                     analysis.getProxyProvider().append("Does Not Vote");
                 }
