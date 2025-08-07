@@ -88,7 +88,6 @@ desktop.ini
 
 # Application specific files
 # Downloaded IAPD data files
-*.xml
 *.gz
 *.csv
 

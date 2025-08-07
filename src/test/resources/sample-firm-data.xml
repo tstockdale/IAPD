@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IAData>
+    <Firm>
+        <Info firmCrdNb="12345" secNb="SEC123" busNm="Test Investment Advisors LLC" legalNm="Test Investment Advisors LLC"/>
+        <MainAddr street1="123 Main Street" street2="Suite 100" city="New York" state="NY" country="USA" postalCd="10001"/>
+        <PhoneNb phoneNb="555-123-4567"/>
+        <FaxNb faxNb="555-123-4568"/>
+        <Registration regDt="2020-01-01" state="NY"/>
+        <Filing filingDt="2023-12-31" formVrsn="2.0"/>
+        <Employee totalEmp="50"/>
+        <AUM aumAmt="1000000000"/>
+        <Account totalAcct="500"/>
+    </Firm>
+    <Firm>
+        <Info firmCrdNb="67890" secNb="SEC456" busNm="Another Advisory Firm" legalNm="Another Advisory Firm Inc"/>
+        <MainAddr street1="456 Oak Avenue" city="Boston" state="MA" country="USA" postalCd="02101"/>
+        <PhoneNb phoneNb="617-555-9876"/>
+        <Registration regDt="2019-06-15" state="MA"/>
+        <Filing filingDt="2023-11-30" formVrsn="1.5"/>
+        <Employee totalEmp="25"/>
+        <AUM aumAmt="500000000"/>
+        <Account totalAcct="250"/>
+    </Firm>
+</IAData>

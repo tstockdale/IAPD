@@ -1,172 +1,52 @@
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.appender.ConsoleAppender;
-import org.apache.logging.log4j.core.appender.RollingFileAppender;
-import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
-import org.apache.logging.log4j.core.appender.rolling.SizeBasedTriggeringPolicy;
-import org.apache.logging.log4j.core.config.DefaultConfiguration;
-import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.logging.log4j.Level;
 import java.io.File;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Log4j-based logging utility for processing operations with failure tracking
- * Configured programmatically with console and rolling file appenders (5MB rollover)
- * Also provides a separate provider match logger with 50MB rollover
+ * Uses log4j2.xml configuration file for logger setup
+ * Provides two loggers:
+ * - ProcessingLogger: console + rolling file (5MB rollover)
+ * - ProviderMatchLogger: file-only (50MB rollover)
  */
 public class ProcessingLogger {
     
     private static final Logger logger;
     private static final Logger providerMatchLogger;
     
-    // Static initializer to configure logging programmatically
+    // Static initializer to get loggers and ensure log directory exists
     static {
-        configureLogging();
+        // Ensure log directory exists before logging starts
+        ensureLogDirectoryExists();
+        
+        // Get loggers - configuration comes from log4j2.xml
         logger = LogManager.getLogger("ProcessingLogger");
         providerMatchLogger = LogManager.getLogger("ProviderMatchLogger");
     }
     
     /**
-     * Configures Log4j programmatically instead of using XML configuration
+     * Ensures the log directory exists before logging starts
      */
-    private static void configureLogging() {
+    private static void ensureLogDirectoryExists() {
         try {
-            // Disable XML configuration loading completely
-            System.setProperty("log4j2.configurationFile", "");
-            System.setProperty("log4j.configurationFile", "");
-            System.setProperty("log4j2.disable.jmx", "true");
-            
             // Get log path from Config and resolve it properly
             String logPath = Config.LOG_PATH.startsWith("./") ? Config.LOG_PATH.substring(2) : Config.LOG_PATH;
             String logDir = System.getProperty("user.dir") + File.separator + logPath;
-            String logFile = logDir + File.separator + "processing.log";
-            String logPattern = logDir + File.separator + "processing-%i.log.gz";
             
-            // Ensure log directory exists
             File logDirectory = new File(logDir);
             if (!logDirectory.exists()) {
-                logDirectory.mkdirs();
+                boolean created = logDirectory.mkdirs();
+                if (created) {
+                    System.out.println("Created log directory: " + logDir);
+                }
             }
             
-            // Create a completely new default configuration without getting existing context
-            DefaultConfiguration config = new DefaultConfiguration();
-            config.setName("ProgrammaticConfig");
-            
-            // Create pattern layout
-            PatternLayout layout = PatternLayout.newBuilder()
-                    .withPattern("%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{36} - %msg%n")
-                    .withConfiguration(config)
-                    .build();
-            
-            // Create console appender
-            ConsoleAppender consoleAppender = ConsoleAppender.newBuilder()
-                    .setName("Console")
-                    .setTarget(ConsoleAppender.Target.SYSTEM_OUT)
-                    .setLayout(layout)
-                    .setConfiguration(config)
-                    .build();
-            consoleAppender.start();
-            config.addAppender(consoleAppender);
-            
-            // Create rolling file appender for processing logs
-            SizeBasedTriggeringPolicy policy = SizeBasedTriggeringPolicy.createPolicy("5MB");
-            DefaultRolloverStrategy strategy = DefaultRolloverStrategy.newBuilder()
-                    .withMax("10")
-                    .withConfig(config)
-                    .build();
-            
-            RollingFileAppender fileAppender = RollingFileAppender.newBuilder()
-                    .setName("RollingFile")
-                    .withFileName(logFile)
-                    .withFilePattern(logPattern)
-                    .setLayout(layout)
-                    .withPolicy(policy)
-                    .withStrategy(strategy)
-                    .setConfiguration(config)
-                    .build();
-            fileAppender.start();
-            config.addAppender(fileAppender);
-            
-            // Create provider match logger appender with 50MB rollover
-            String providerLogFile = logDir + File.separator + "provider_match_strings.log";
-            String providerLogPattern = logDir + File.separator + "provider_match_strings-%i.log.gz";
-            
-            // Create simple pattern layout for provider matches (no logger name, just timestamp and message)
-            PatternLayout providerLayout = PatternLayout.newBuilder()
-                    .withPattern("%d{yyyy-MM-dd HH:mm:ss} - %msg%n")
-                    .withConfiguration(config)
-                    .build();
-            
-            SizeBasedTriggeringPolicy providerPolicy = SizeBasedTriggeringPolicy.createPolicy("50MB");
-            DefaultRolloverStrategy providerStrategy = DefaultRolloverStrategy.newBuilder()
-                    .withMax("10")
-                    .withConfig(config)
-                    .build();
-            
-            RollingFileAppender providerFileAppender = RollingFileAppender.newBuilder()
-                    .setName("ProviderMatchFile")
-                    .withFileName(providerLogFile)
-                    .withFilePattern(providerLogPattern)
-                    .setLayout(providerLayout)
-                    .withPolicy(providerPolicy)
-                    .withStrategy(providerStrategy)
-                    .setConfiguration(config)
-                    .build();
-            providerFileAppender.start();
-            config.addAppender(providerFileAppender);
-            
-            // Configure ProcessingLogger
-            org.apache.logging.log4j.core.config.LoggerConfig processingLoggerConfig = 
-                    org.apache.logging.log4j.core.config.LoggerConfig.newBuilder()
-                            .withAdditivity(false)
-                            .withLevel(Level.INFO)
-                            .withLoggerName("ProcessingLogger")
-                            .withIncludeLocation("true")
-                            .withRefs(new org.apache.logging.log4j.core.config.AppenderRef[]{
-                                    org.apache.logging.log4j.core.config.AppenderRef.createAppenderRef("Console", null, null),
-                                    org.apache.logging.log4j.core.config.AppenderRef.createAppenderRef("RollingFile", null, null)
-                            })
-                            .withProperties(null)
-                            .withConfig(config)
-                            .build();
-            processingLoggerConfig.addAppender(consoleAppender, null, null);
-            processingLoggerConfig.addAppender(fileAppender, null, null);
-            config.addLogger("ProcessingLogger", processingLoggerConfig);
-            
-            // Configure ProviderMatchLogger (file-only, no console output, no additivity)
-            org.apache.logging.log4j.core.config.LoggerConfig providerLoggerConfig = 
-                    org.apache.logging.log4j.core.config.LoggerConfig.newBuilder()
-                            .withAdditivity(false)
-                            .withLevel(Level.INFO)
-                            .withLoggerName("ProviderMatchLogger")
-                            .withIncludeLocation("false")
-                            .withRefs(new org.apache.logging.log4j.core.config.AppenderRef[]{
-                                    org.apache.logging.log4j.core.config.AppenderRef.createAppenderRef("ProviderMatchFile", null, null)
-                            })
-                            .withProperties(null)
-                            .withConfig(config)
-                            .build();
-            providerLoggerConfig.addAppender(providerFileAppender, null, null);
-            config.addLogger("ProviderMatchLogger", providerLoggerConfig);
-            
-            // Configure root logger
-            org.apache.logging.log4j.core.config.LoggerConfig rootLoggerConfig = config.getRootLogger();
-            rootLoggerConfig.addAppender(consoleAppender, null, null);
-            rootLoggerConfig.addAppender(fileAppender, null, null);
-            rootLoggerConfig.setLevel(Level.INFO);
-            
-            // Start the configuration first
-            config.start();
-            
-            // Now get the context and set our configuration
-            LoggerContext context = (LoggerContext) LogManager.getContext(false);
-            context.setConfiguration(config);
-            context.updateLoggers();
+            // Set system property for log path so log4j2.xml can use it
+            System.setProperty("log.path", logPath);
             
         } catch (Exception e) {
-            System.err.println("Failed to configure logging programmatically: " + e.getMessage());
+            System.err.println("Failed to ensure log directory exists: " + e.getMessage());
             e.printStackTrace();
         }
     }
