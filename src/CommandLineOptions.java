@@ -12,6 +12,10 @@ public class CommandLineOptions {
     private boolean resumeProcessing = false;
     private boolean validatePdfs = true;
     private boolean forceRestart = false;
+    private boolean incrementalUpdates = false;
+    private boolean incrementalDownloads = false;
+    private boolean incrementalProcessing = false;
+    private String baselineFilePath = null;
     
     /**
      * Parses command line arguments and returns a CommandLineOptions object
@@ -78,6 +82,28 @@ public class CommandLineOptions {
                     options.forceRestart = true;
                     break;
                     
+                case "--incremental":
+                case "-i":
+                    options.incrementalUpdates = true;
+                    options.incrementalDownloads = true;
+                    options.incrementalProcessing = true;
+                    break;
+                    
+                case "--incremental-downloads":
+                    options.incrementalDownloads = true;
+                    break;
+                    
+                case "--incremental-processing":
+                    options.incrementalProcessing = true;
+                    break;
+                    
+                case "--baseline-file":
+                    if (i + 1 >= args.length) {
+                        throw new IllegalArgumentException("Missing value for " + arg);
+                    }
+                    options.baselineFilePath = args[++i];
+                    break;
+                    
                 default:
                     throw new IllegalArgumentException("Unknown argument: " + arg);
             }
@@ -104,6 +130,10 @@ public class CommandLineOptions {
         System.out.println("      --validate-pdfs           Validate existing PDF files during resume (default)");
         System.out.println("      --no-validate-pdfs        Skip PDF validation during resume");
         System.out.println("      --force-restart           Ignore existing files and start fresh");
+        System.out.println("  -i, --incremental             Enable incremental updates for both downloads and processing");
+        System.out.println("      --incremental-downloads   Enable incremental updates for downloads only");
+        System.out.println("      --incremental-processing  Enable incremental updates for processing only");
+        System.out.println("      --baseline-file <path>    Specify baseline IAPD_Data.csv file for incremental comparison");
         System.out.println("  -h, --help                    Show this help message");
         System.out.println();
         System.out.println("Examples:");
@@ -112,6 +142,8 @@ public class CommandLineOptions {
         System.out.println("  java IAFirmSECParserRefactored -l 500 --verbose");
         System.out.println("  java IAFirmSECParserRefactored --resume --index-limit 1000");
         System.out.println("  java IAFirmSECParserRefactored --resume-downloads --validate-pdfs");
+        System.out.println("  java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Output/IAPD_Data.csv");
+        System.out.println("  java IAFirmSECParserRefactored --incremental-downloads --baseline-file ./Data/Output/IAPD_Data.csv");
     }
     
     // Getters
@@ -147,6 +179,22 @@ public class CommandLineOptions {
         return forceRestart;
     }
     
+    public boolean isIncrementalUpdates() {
+        return incrementalUpdates;
+    }
+    
+    public boolean isIncrementalDownloads() {
+        return incrementalDownloads;
+    }
+    
+    public boolean isIncrementalProcessing() {
+        return incrementalProcessing;
+    }
+    
+    public String getBaselineFilePath() {
+        return baselineFilePath;
+    }
+    
     // Setters for testing or programmatic configuration
     public void setIndexLimit(int indexLimit) {
         this.indexLimit = indexLimit;
@@ -176,6 +224,22 @@ public class CommandLineOptions {
         this.forceRestart = forceRestart;
     }
     
+    public void setIncrementalUpdates(boolean incrementalUpdates) {
+        this.incrementalUpdates = incrementalUpdates;
+    }
+    
+    public void setIncrementalDownloads(boolean incrementalDownloads) {
+        this.incrementalDownloads = incrementalDownloads;
+    }
+    
+    public void setIncrementalProcessing(boolean incrementalProcessing) {
+        this.incrementalProcessing = incrementalProcessing;
+    }
+    
+    public void setBaselineFilePath(String baselineFilePath) {
+        this.baselineFilePath = baselineFilePath;
+    }
+    
     @Override
     public String toString() {
         return "CommandLineOptions{" +
@@ -187,6 +251,10 @@ public class CommandLineOptions {
                 ", resumeProcessing=" + resumeProcessing +
                 ", validatePdfs=" + validatePdfs +
                 ", forceRestart=" + forceRestart +
+                ", incrementalUpdates=" + incrementalUpdates +
+                ", incrementalDownloads=" + incrementalDownloads +
+                ", incrementalProcessing=" + incrementalProcessing +
+                ", baselineFilePath='" + baselineFilePath + '\'' +
                 '}';
     }
 }

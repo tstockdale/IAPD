@@ -18,6 +18,10 @@ public class ProcessingContext {
     private final boolean resumeProcessing;
     private final boolean validatePdfs;
     private final boolean forceRestart;
+    private final boolean incrementalUpdates;
+    private final boolean incrementalDownloads;
+    private final boolean incrementalProcessing;
+    private final String baselineFilePath;
     private final String configSource;
     private final LocalDateTime createdAt;
     
@@ -42,6 +46,10 @@ public class ProcessingContext {
         this.resumeProcessing = builder.resumeProcessing;
         this.validatePdfs = builder.validatePdfs;
         this.forceRestart = builder.forceRestart;
+        this.incrementalUpdates = builder.incrementalUpdates;
+        this.incrementalDownloads = builder.incrementalDownloads;
+        this.incrementalProcessing = builder.incrementalProcessing;
+        this.baselineFilePath = builder.baselineFilePath;
         this.configSource = builder.configSource;
         this.createdAt = LocalDateTime.now();
         this.processingStartTime.set(System.currentTimeMillis());
@@ -57,6 +65,10 @@ public class ProcessingContext {
     public boolean isResumeProcessing() { return resumeProcessing; }
     public boolean isValidatePdfs() { return validatePdfs; }
     public boolean isForceRestart() { return forceRestart; }
+    public boolean isIncrementalUpdates() { return incrementalUpdates; }
+    public boolean isIncrementalDownloads() { return incrementalDownloads; }
+    public boolean isIncrementalProcessing() { return incrementalProcessing; }
+    public String getBaselineFilePath() { return baselineFilePath; }
     public String getConfigSource() { return configSource; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     
@@ -141,6 +153,10 @@ public class ProcessingContext {
         private boolean resumeProcessing = false;
         private boolean validatePdfs = true;
         private boolean forceRestart = false;
+        private boolean incrementalUpdates = false;
+        private boolean incrementalDownloads = false;
+        private boolean incrementalProcessing = false;
+        private String baselineFilePath = null;
         private String configSource = "default";
         
         public Builder indexLimit(int indexLimit) {
@@ -197,6 +213,26 @@ public class ProcessingContext {
             return this;
         }
         
+        public Builder incrementalUpdates(boolean incrementalUpdates) {
+            this.incrementalUpdates = incrementalUpdates;
+            return this;
+        }
+        
+        public Builder incrementalDownloads(boolean incrementalDownloads) {
+            this.incrementalDownloads = incrementalDownloads;
+            return this;
+        }
+        
+        public Builder incrementalProcessing(boolean incrementalProcessing) {
+            this.incrementalProcessing = incrementalProcessing;
+            return this;
+        }
+        
+        public Builder baselineFilePath(String baselineFilePath) {
+            this.baselineFilePath = baselineFilePath;
+            return this;
+        }
+        
         public Builder configSource(String configSource) {
             this.configSource = configSource != null ? configSource : "unknown";
             return this;
@@ -225,6 +261,10 @@ public class ProcessingContext {
                 .resumeProcessing(options.isResumeProcessing())
                 .validatePdfs(options.isValidatePdfs())
                 .forceRestart(options.isForceRestart())
+                .incrementalUpdates(options.isIncrementalUpdates())
+                .incrementalDownloads(options.isIncrementalDownloads())
+                .incrementalProcessing(options.isIncrementalProcessing())
+                .baselineFilePath(options.getBaselineFilePath())
                 .configSource("command-line")
                 .build();
     }

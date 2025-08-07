@@ -22,7 +22,10 @@ public final class Config {
     
     // CSV headers
     public static final String FIRM_HEADER = "SECRgmCD,FirmCrdNb,SECMb,Business Name,Legal Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Fax #,Registration Firm Type,Registration State,Registration Date,Filing Date,Filing Version,Total Employees,AUM,Total Accounts,BrochureURL";
-    public static final String FOUND_FILE_HEADER = "SECRgmCD,FirmCrdNb,SECMb,Business Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Filing Date,AUM,Total Accounts,Total Employees,Proxy Provider, Class Action Provider,ESG Provider, ESG Investment Language, File Name,Brochure URL,Email -- Compliance,Email -- Proxy,Email -- Brochure,Email -- Item 17,Email -- All,Does Not Vote String";
+    public static final String IAPD_DATA_HEADER = "SECRgmCD,FirmCrdNb,SECMb,Business Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Filing Date,AUM,Total Accounts,Total Employees,Proxy Provider, Class Action Provider,ESG Provider, ESG Investment Language, File Name,Brochure URL,Email -- Compliance,Email -- Proxy,Email -- Brochure,Email -- Item 17,Email -- All,Does Not Vote String";
+    
+    // Legacy alias for backward compatibility
+    public static final String FOUND_FILE_HEADER = IAPD_DATA_HEADER;
     
     // Private constructor to prevent instantiation
     private Config() {
