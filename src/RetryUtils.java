@@ -96,16 +96,26 @@ public class RetryUtils {
             return true;
         }
         
-        // Check message for transient keywords
+        // Check message for transient keywords (but exclude non-transient exceptions)
+        if (e instanceof IllegalArgumentException || 
+            e instanceof IllegalStateException ||
+            e instanceof NullPointerException) {
+            return false; // These are never transient
+        }
+        
         String message = e.getMessage();
         if (message != null) {
             String lowerMessage = message.toLowerCase();
+            // Only consider it transient if it has network-related keywords
+            // but exclude explicit "non-transient" messages
+            if (lowerMessage.contains("non-transient")) {
+                return false;
+            }
             return lowerMessage.contains("timeout") ||
                    lowerMessage.contains("connection") ||
                    lowerMessage.contains("network") ||
                    lowerMessage.contains("socket") ||
                    lowerMessage.contains("unreachable") ||
-                   lowerMessage.contains("transient") ||
                    lowerMessage.contains("reset") ||
                    lowerMessage.contains("unavailable");
         }

@@ -85,6 +85,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+test*.out
 
 # Application specific files
 # Downloaded IAPD data files

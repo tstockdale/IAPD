@@ -26,8 +26,39 @@ public class CommandLineOptions {
     public static CommandLineOptions parseArgs(String[] args) throws IllegalArgumentException {
         CommandLineOptions options = new CommandLineOptions();
         
+        // Handle null arguments gracefully
+        if (args == null) {
+            return options;
+        }
+        
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
+            
+            // Handle arguments with equals sign (e.g., --index-limit=250)
+            if (arg.contains("=")) {
+                String[] parts = arg.split("=", 2);
+                if (parts.length == 2) {
+                    String key = parts[0];
+                    String value = parts[1].trim(); // Handle extra spaces
+                    
+                    if ("--index-limit".equals(key) || "-l".equals(key)) {
+                        try {
+                            options.indexLimit = Integer.parseInt(value);
+                            if (options.indexLimit < 0) {
+                                throw new IllegalArgumentException("Index limit must be a positive integer");
+                            }
+                        } catch (NumberFormatException e) {
+                            throw new IllegalArgumentException("Invalid index limit value: " + value);
+                        }
+                        continue;
+                    } else if ("--baseline-file".equals(key)) {
+                        options.baselineFilePath = value;
+                        continue;
+                    } else {
+                        throw new IllegalArgumentException("Unknown argument: " + arg);
+                    }
+                }
+            }
             
             switch (arg) {
                 case "--index-limit":
@@ -36,12 +67,13 @@ public class CommandLineOptions {
                         throw new IllegalArgumentException("Missing value for " + arg);
                     }
                     try {
-                        options.indexLimit = Integer.parseInt(args[++i]);
-                        if (options.indexLimit <= 0) {
+                        String value = args[++i].trim(); // Handle extra spaces
+                        options.indexLimit = Integer.parseInt(value);
+                        if (options.indexLimit < 0) {
                             throw new IllegalArgumentException("Index limit must be a positive integer");
                         }
                     } catch (NumberFormatException e) {
-                        throw new IllegalArgumentException("Invalid index limit value: " + args[i]);
+                        throw new IllegalArgumentException("Invalid index limit value: " + args[i].trim());
                     }
                     break;
                     

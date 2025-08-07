@@ -123,6 +123,14 @@ public class ConfigurationManager {
             // Command line arguments override all other sources
             builder.indexLimit(options.getIndexLimit())
                    .verbose(options.isVerbose())
+                   .resumeDownloads(options.isResumeDownloads())
+                   .resumeProcessing(options.isResumeProcessing())
+                   .validatePdfs(options.isValidatePdfs())
+                   .forceRestart(options.isForceRestart())
+                   .incrementalUpdates(options.isIncrementalUpdates())
+                   .incrementalDownloads(options.isIncrementalDownloads())
+                   .incrementalProcessing(options.isIncrementalProcessing())
+                   .baselineFilePath(options.getBaselineFilePath())
                    .configSource("command-line");
                    
         } catch (IllegalArgumentException e) {
@@ -218,6 +226,13 @@ public class ConfigurationManager {
      * Prints the effective configuration
      */
     public void printEffectiveConfiguration(ProcessingContext context) {
+        if (context == null) {
+            System.out.println("=== Effective Configuration ===");
+            System.out.println("Error: No configuration context provided");
+            System.out.println("===============================");
+            return;
+        }
+        
         System.out.println("=== Effective Configuration ===");
         System.out.println("Config Source: " + context.getConfigSource());
         System.out.println("Index Limit: " + (context.getIndexLimit() == Integer.MAX_VALUE ? "unlimited" : context.getIndexLimit()));
