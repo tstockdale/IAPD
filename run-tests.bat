@@ -28,18 +28,41 @@ if not exist "test-lib\junit-jupiter-api-*.jar" (
     exit /b 1
 )
 
+REM Set up Java 11 paths
+set JAVA_HOME=C:\Users\stoctom\AppData\Local\Programs\Microsoft\jdk-11.0.26.4-hotspot
+set JAVAC_CMD=%JAVA_HOME%\bin\javac.exe
+set JAVA_CMD=%JAVA_HOME%\bin\java.exe
+
 REM Set up classpath variables for clarity
 set PRODUCTION_CP=lib/*
 set TEST_CP=lib/*;test-lib/*;bin
 set RUNTIME_CP=lib/*;test-lib/*;bin
 
+echo Using Java 11 from: %JAVA_HOME%
+echo Javac command: %JAVAC_CMD%
+echo Java command: %JAVA_CMD%
 echo Production classpath: %PRODUCTION_CP%
 echo Test classpath: %TEST_CP%
 echo Runtime classpath: %RUNTIME_CP%
 echo.
 
+REM Verify Java 11 installation
+if not exist "%JAVAC_CMD%" (
+    echo ERROR: Java 11 javac not found at %JAVAC_CMD%
+    echo Please verify the Java 11 installation path.
+    pause
+    exit /b 1
+)
+
+if not exist "%JAVA_CMD%" (
+    echo ERROR: Java 11 java not found at %JAVA_CMD%
+    echo Please verify the Java 11 installation path.
+    pause
+    exit /b 1
+)
+
 echo Compiling production code...
-javac -cp "%PRODUCTION_CP%" -d bin src/*.java
+"%JAVAC_CMD%" -encoding UTF-8 -cp "%PRODUCTION_CP%" -d bin src/*.java
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to compile production code!
     echo Check that all production dependencies are in lib/ directory
@@ -48,7 +71,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo Compiling test code...
-javac -cp "%TEST_CP%" -d bin src/test/java/*.java
+"%JAVAC_CMD%" -encoding UTF-8 -cp "%TEST_CP%" -d bin src/test/java/*.java
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to compile test code!
     echo Make sure all JUnit 5 JAR files are in test-lib directory.
@@ -61,7 +84,7 @@ echo.
 echo Running JUnit tests...
 echo Runtime classpath: %RUNTIME_CP%
 echo ================================================================================
-java -cp "%RUNTIME_CP%" TestRunner
+"%JAVA_CMD%" -Dfile.encoding=UTF-8 -cp "%RUNTIME_CP%" TestRunner
 
 echo.
 echo Test execution completed.

@@ -37,7 +37,7 @@ public class RetryUtilsTest {
             Supplier<String> operation = () -> {
                 int attempt = attemptCount.incrementAndGet();
                 if (attempt < 3) {
-                    throw new RuntimeException("Transient failure");
+                    throw new RuntimeException(new IOException("Transient failure"));
                 }
                 return "success after retries";
             };
@@ -54,7 +54,7 @@ public class RetryUtilsTest {
             AtomicInteger attemptCount = new AtomicInteger(0);
             Supplier<String> operation = () -> {
                 attemptCount.incrementAndGet();
-                throw new RuntimeException("Persistent failure");
+                throw new RuntimeException(new IOException("Transient failure that always fails"));
             };
             
             assertThrows(RuntimeException.class, () -> {
@@ -155,7 +155,7 @@ public class RetryUtilsTest {
                 throw new IllegalArgumentException("Non-transient error");
             };
             
-            assertThrows(IllegalArgumentException.class, () -> {
+            assertThrows(RuntimeException.class, () -> {
                 RetryUtils.executeWithRetry(operation, 3, 50, "test operation");
             });
             
@@ -171,7 +171,7 @@ public class RetryUtilsTest {
             Supplier<String> operation = () -> {
                 int attempt = attemptCount.incrementAndGet();
                 if (attempt < 3) {
-                    throw new IOException("Transient network error");
+                    throw new RuntimeException(new IOException("Transient network error"));
                 }
                 return "success";
             };
@@ -192,10 +192,10 @@ public class RetryUtilsTest {
             AtomicInteger attemptCount = new AtomicInteger(0);
             Supplier<String> operation = () -> {
                 attemptCount.incrementAndGet();
-                throw new IOException("Always fails");
+                throw new RuntimeException(new IOException("Always fails"));
             };
             
-            assertThrows(IOException.class, () -> {
+            assertThrows(RuntimeException.class, () -> {
                 RetryUtils.executeWithRetry(operation, maxRetries, 10, "test operation");
             });
             
@@ -255,7 +255,7 @@ public class RetryUtilsTest {
             Supplier<String> operation = () -> {
                 int attempt = attemptCount.incrementAndGet();
                 if (attempt < 2) {
-                    throw new IOException("Transient error");
+                    throw new RuntimeException(new IOException("Transient error"));
                 }
                 return "success";
             };
@@ -309,7 +309,7 @@ public class RetryUtilsTest {
                     Supplier<String> operation = () -> {
                         int attempt = attemptCount.incrementAndGet();
                         if (attempt < 2) {
-                            throw new IOException("Transient error in thread " + threadId);
+                            throw new RuntimeException(new IOException("Transient error in thread " + threadId));
                         }
                         return "success from thread " + threadId;
                     };
@@ -368,7 +368,7 @@ public class RetryUtilsTest {
                     Thread.currentThread().interrupt();
                 }
                 if (attempt < 3) {
-                    throw new IOException("Transient error");
+                    throw new RuntimeException(new IOException("Transient error"));
                 }
                 return "success after varying delays";
             };

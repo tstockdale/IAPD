@@ -4,6 +4,11 @@ echo DOWNLOADING JUNIT 5 DEPENDENCIES
 echo ================================================================================
 echo.
 
+REM Set up Java 11 paths
+set JAVA_HOME=C:\Users\stoctom\AppData\Local\Programs\Microsoft\jdk-11.0.26.4-hotspot
+echo Using Java 11 from: %JAVA_HOME%
+echo.
+
 REM Create test-lib directory if it doesn't exist
 if not exist "test-lib" (
     echo Creating test-lib directory...

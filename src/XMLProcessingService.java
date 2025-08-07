@@ -97,11 +97,11 @@ public class XMLProcessingService {
             XMLInputFactory factory = XMLInputFactory.newInstance();
             XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
             int index = 0;
-            while (reader.hasNext() && index < 100000) {
-            	index++;
+            while (reader.hasNext() && index < Integer.MAX_VALUE) {
                 reader.next();
                 if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
                     "Firm".equals(reader.getLocalName())) {
+                	index++;
                     if (!processNextFirm(reader, firmWriter)) {
                         break;
                     }

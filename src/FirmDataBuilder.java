@@ -26,27 +26,27 @@ public class FirmDataBuilder {
     private String brochureURL = "";
     
     public FirmDataBuilder setSECRgnCD(String SECRgnCD) {
-        this.SECRgnCD = SECRgnCD != null ? SECRgnCD : "";
+        this.SECRgnCD = SECRgnCD;
         return this;
     }
     
     public FirmDataBuilder setFirmCrdNb(String firmCrdNb) {
-        this.firmCrdNb = firmCrdNb != null ? firmCrdNb : "";
+        this.firmCrdNb = firmCrdNb;
         return this;
     }
     
     public FirmDataBuilder setSECNb(String SECNb) {
-        this.SECNb = SECNb != null ? SECNb : "";
+        this.SECNb = SECNb;
         return this;
     }
     
     public FirmDataBuilder setBusNm(String busNm) {
-        this.busNm = busNm != null ? busNm : "";
+        this.busNm = busNm;
         return this;
     }
     
     public FirmDataBuilder setLegalNm(String legalNm) {
-        this.legalNm = legalNm != null ? legalNm : "";
+        this.legalNm = legalNm;
         return this;
     }
     

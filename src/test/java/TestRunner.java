@@ -14,9 +14,10 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectPacka
 public class TestRunner {
     
     public static void main(String[] args) {
-        System.out.println("=".repeat(80));
+        String separator = "================================================================================";
+        System.out.println(separator);
         System.out.println("IAPD PROJECT - JUNIT TEST EXECUTION");
-        System.out.println("=".repeat(80));
+        System.out.println(separator);
         
         // Create launcher discovery request
         LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
@@ -38,9 +39,12 @@ public class TestRunner {
     }
     
     private static void printTestSummary(TestExecutionSummary summary) {
-        System.out.println("\n" + "=".repeat(80));
+        String separator = "================================================================================";
+        String shortSeparator = "----------------------------------------";
+        
+        System.out.println("\n" + separator);
         System.out.println("TEST EXECUTION SUMMARY");
-        System.out.println("=".repeat(80));
+        System.out.println(separator);
         
         System.out.printf("Tests found: %d%n", summary.getTestsFoundCount());
         System.out.printf("Tests started: %d%n", summary.getTestsStartedCount());
@@ -49,14 +53,12 @@ public class TestRunner {
         System.out.printf("Tests aborted: %d%n", summary.getTestsAbortedCount());
         System.out.printf("Tests failed: %d%n", summary.getTestsFailedCount());
         
-        System.out.printf("Total time: %d ms%n", summary.getTotalTime());
-        
         // Print failure details if any
         if (summary.getTestsFailedCount() > 0) {
             System.out.println("\nFAILED TESTS:");
-            System.out.println("-".repeat(40));
+            System.out.println(shortSeparator);
             summary.getFailures().forEach(failure -> {
-                System.out.printf("❌ %s%n", failure.getTestIdentifier().getDisplayName());
+                System.out.printf("X %s%n", failure.getTestIdentifier().getDisplayName());
                 System.out.printf("   Exception: %s%n", failure.getException().getClass().getSimpleName());
                 System.out.printf("   Message: %s%n", failure.getException().getMessage());
                 System.out.println();
@@ -64,12 +66,12 @@ public class TestRunner {
         }
         
         // Print overall result
-        System.out.println("=".repeat(80));
+        System.out.println(separator);
         if (summary.getTestsFailedCount() == 0) {
-            System.out.println("✅ ALL TESTS PASSED!");
+            System.out.println("ALL TESTS PASSED!");
         } else {
-            System.out.printf("❌ %d TEST(S) FAILED%n", summary.getTestsFailedCount());
+            System.out.printf("%d TEST(S) FAILED%n", summary.getTestsFailedCount());
         }
-        System.out.println("=".repeat(80));
+        System.out.println(separator);
     }
 }

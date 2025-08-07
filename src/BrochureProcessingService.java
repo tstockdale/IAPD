@@ -83,7 +83,7 @@ public class BrochureProcessingService {
         
         try (FileInputStream stream = new FileInputStream(brochureFile)) {
             String text = PdfTextExtractor.getCleanedBrochureText(stream);
-            BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text);
+            BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text, firmCrdNb);
             csvWriterService.writeBrochureAnalysis(writer, recordMap, analysis, brochureFile.getName(), brochureURL);
         }
     }
@@ -101,7 +101,7 @@ public class BrochureProcessingService {
             String text = PdfTextExtractor.getBrochureText(fis);
             ProcessingLogger.logInfo("Extracted text length: " + text.length());
             
-            BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text);
+            BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text, "Test");
             ProcessingLogger.logInfo("Proxy Providers: " + analysis.getProxyProvider().toString());
             ProcessingLogger.logInfo("Class Action Providers: " + analysis.getClassActionProvider().toString());
             ProcessingLogger.logInfo("ESG Providers: " + analysis.getEsgProvider().toString());

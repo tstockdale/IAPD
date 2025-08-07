@@ -38,7 +38,7 @@ echo "Runtime classpath: $RUNTIME_CP"
 echo
 
 echo "Compiling production code..."
-javac -cp "$PRODUCTION_CP" -d bin src/*.java
+javac -encoding UTF-8 -cp "$PRODUCTION_CP" -d bin src/*.java
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to compile production code!"
     echo "Check that all production dependencies are in lib/ directory"
@@ -46,7 +46,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Compiling test code..."
-javac -cp "$TEST_CP" -d bin src/test/java/*.java
+javac -encoding UTF-8 -cp "$TEST_CP" -d bin src/test/java/*.java
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to compile test code!"
     echo "Make sure all JUnit 5 JAR files are in test-lib directory."
@@ -58,7 +58,7 @@ echo
 echo "Running JUnit tests..."
 echo "Runtime classpath: $RUNTIME_CP"
 echo "================================================================================"
-java -cp "$RUNTIME_CP" TestRunner
+java -Dfile.encoding=UTF-8 -cp "$RUNTIME_CP" TestRunner
 
 echo
 echo "Test execution completed."

@@ -30,8 +30,13 @@ public class BrochureAnalyzer {
     /**
      * Analyzes brochure content using all configured strategies
      */
-    public BrochureAnalysis analyzeBrochureContent(String text) {
+    public BrochureAnalysis analyzeBrochureContent(String text, String firmCrdNb) {
         BrochureAnalysis analysis = new BrochureAnalysis();
+        ProcessingLogger.logProviderMatch("Analyzing brochure for Firm CRD#: " + firmCrdNb);
+        // Handle null input gracefully
+        if (text == null) {
+            return analysis;
+        }
         
         // Apply all analysis strategies
         for (AnalysisStrategy strategy : strategies) {
@@ -76,6 +81,7 @@ public class BrochureAnalyzer {
             addProviderIfFound(PatternMatchers.ISS_CLASS_ACTION_PATTERN, text, analysis.getClassActionProvider(), "ISS");
             addProviderIfFound(PatternMatchers.BATTEA_CLASS_ACTION_PATTERN, text, analysis.getClassActionProvider(), "Battea");
             addProviderIfFound(PatternMatchers.CCC_CLASS_ACTION_PATTERN, text, analysis.getClassActionProvider(), "CCC");
+            addProviderIfFound(PatternMatchers.ROBBINS_GELLER_CLASS_ACTION_PATTERN, text, analysis.getClassActionProvider(), "Robbins Geller");
         }
     }
     
@@ -133,9 +139,6 @@ public class BrochureAnalyzer {
             Matcher matcher = PatternMatchers.NO_VOTE_PATTERN.matcher(text);
             if (matcher.find()) {
                 analysis.getNoVoteString().append(matcher.group(0));
-                StringBuilder message = new StringBuilder("No vote pattern found: ");
-                message.append(analysis.getNoVoteString().toString());
-                ProcessingLogger.logInfo(message.toString());
                 if (analysis.getProxyProvider().length() == 0) {
                     analysis.getProxyProvider().append("Does Not Vote");
                 }
@@ -147,7 +150,10 @@ public class BrochureAnalyzer {
      * Helper method to add provider if pattern is found
      */
     private static void addProviderIfFound(Pattern pattern, String text, StringBuilder providerList, String providerName) {
-        if (pattern.matcher(text).find()) {
+    	Matcher m = pattern.matcher(text);
+    	if (m.find()) {
+        	// Log to dedicated provider match strings log file with counting
+        	ProcessingLogger.logProviderMatch(providerName, m.group(0));
             if (providerList.length() == 0) {
                 providerList.append(providerName);
             } else {

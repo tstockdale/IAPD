@@ -16,8 +16,7 @@ public final class PatternMatchers {
     
     // Helper method to create email sentence patterns
     private static String createEmailSentencePattern(String keyword) {
-        return String.format("(?:(.{10}\\.[^.]*?%s[^.]*?%s[^.]*?\\.)|(.{10}\\.[^.]*?%s[^.]*?%s[^.]*?\\.))", 
-                            keyword, EMAIL_PATTERN_BASE, EMAIL_PATTERN_BASE, keyword);
+        return String.format("([^.]*?%s[^.]*?%s[^.]*?)", keyword, EMAIL_PATTERN_BASE);
     }
     
     // Simplified regex patterns for various providers and services
@@ -25,13 +24,15 @@ public final class PatternMatchers {
     public static final String BROADRIDGE_MATCHER = "Broadridge";
     public static final String SUSTAINALYTICS_MATCHER = "Sustainalytics";
     public static final String MSCI_MATCHER = "(?:ESG.{1,100}MSCI|MSCI.{1,100}ESG)";
-    public static final String ESG_MATCHER = "(?:ESG integration|integration of (?:ESG|environmental)|integrates (?:ESG|environmental)|ESG [^.]*?integra|integrat[^.]*?ESG)";
+    public static final String ESG_MATCHER = "(?:environmental, social, and governance|ESG|sustainable investing|ESG integration|integration of (?:ESG|environmental)|integrates (?:ESG|environmental)|ESG [^.]*?integra|integrat[^.]*?ESG)";
     public static final String PROXYEDGE_MATCHER = "Proxy\\s?Edge";
     public static final String EGAN_JONES_MATCHER = "Egan[\\s-]Jones Proxy";
+    public static final String ISS_PROXY_MATCHER_OLD =  "(?:(?:[Pp]rox[iy]|recommendation)[^.]*?ISS|ISS[^.]*?(?:[Pp]rox[iy]|recommendation)|(?:[Pp]rox[iy]|recommendation)[^.]*?Institutional Shareholder Services|Institutional Shareholder Services[^.]*?(?:[Pp]rox[iy]|recommendation))";
     public static final String ISS_PROXY_MATCHER = "(?:(?:proxy|recommendation)[^.]*?(?:ISS|Institutional Shareholder Services)|(?:ISS|Institutional Shareholder Services)[^.]*?(?:proxy|recommendation))";
     public static final String FRT_MATCHER = createClassActionPattern("(?:FRT|Financial Recovery Technologies)");
     public static final String BATTEA_MATCHER = createClassActionPattern("Battea");
     public static final String CCC_MATCHER = createClassActionPattern("CCC");
+    public static final String ROBBINS_GELLER_MATCHER = createClassActionPattern("Robbins Geller");
     public static final String THIRD_PARTY_PROXY_MATCHER = "(?:proxy[^.]*?third[\\s-]party|third[\\s-]party[^.]*?proxy)";
     public static final String ISS_CLASS_ACTION_MATCHER = createClassActionPattern("(?:ISS|Institutional Shareholder Services)");
     public static final String EMAIL_SENTENCE_MATCHER = "Item 17.{1,500}(.{10}\\.[^.]*?" + EMAIL_PATTERN_BASE + "[^.]*?\\.).{1,500}Item 18";
@@ -39,7 +40,7 @@ public final class PatternMatchers {
     public static final String EMAIL_PROXY_SENTENCE_MATCHER = createEmailSentencePattern("proxy");
     public static final String EMAIL_BROCHURE_SENTENCE_MATCHER = createEmailSentencePattern("(?:brochure|question)");
     public static final String EMAIL_MATCHER = ".(" + EMAIL_PATTERN_BASE + ")";
-    public static final String NO_VOTE_MATCHER = "voting client securities[^.]*?not[^.]*?(?:vot[ie][^.]*?(?:proxy|securit)|(?:proxy|securit)[^.]*?vot[ie])";
+    public static final String NO_VOTE_MATCHER = "(?:abstain|not vote|do not vote|will not vote|may not vote)";
     public static final String CUSTODIAL_SERVICES_MATCHER = ".{1,200}ustodial.{1,30}services.{1,200}";
     public static final String API_BRCHR_VERSION_ID_MATCHER = "brochureVersionID..: (\\d+),";
     public static final String BRCHR_VERSION_ID_MATCHER = "BRCHR_VRSN_ID=(\\d+)";
@@ -49,15 +50,16 @@ public final class PatternMatchers {
     public static final Pattern BROADRIDGE_PATTERN = Pattern.compile(BROADRIDGE_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern PROXYEDGE_PATTERN = Pattern.compile(PROXYEDGE_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern EGAN_JONES_PATTERN = Pattern.compile(EGAN_JONES_MATCHER, Pattern.CASE_INSENSITIVE);
-    public static final Pattern ISS_PROXY_PATTERN = Pattern.compile(ISS_PROXY_MATCHER, Pattern.CASE_INSENSITIVE);
+    public static final Pattern ISS_PROXY_PATTERN = Pattern.compile(ISS_PROXY_MATCHER);
     public static final Pattern FRT_PATTERN = Pattern.compile(FRT_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern SUSTAINALYTICS_PATTERN = Pattern.compile(SUSTAINALYTICS_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern MSCI_PATTERN = Pattern.compile(MSCI_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern ESG_PATTERN = Pattern.compile(ESG_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern BATTEA_CLASS_ACTION_PATTERN = Pattern.compile(BATTEA_MATCHER, Pattern.CASE_INSENSITIVE);
-    public static final Pattern CCC_CLASS_ACTION_PATTERN = Pattern.compile(CCC_MATCHER, Pattern.CASE_INSENSITIVE);
+    public static final Pattern CCC_CLASS_ACTION_PATTERN = Pattern.compile(CCC_MATCHER);
+    public static final Pattern ROBBINS_GELLER_CLASS_ACTION_PATTERN = Pattern.compile(ROBBINS_GELLER_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern THIRD_PARTY_PROXY_PATTERN = Pattern.compile(THIRD_PARTY_PROXY_MATCHER, Pattern.CASE_INSENSITIVE);
-    public static final Pattern ISS_CLASS_ACTION_PATTERN = Pattern.compile(ISS_CLASS_ACTION_MATCHER, Pattern.CASE_INSENSITIVE);
+    public static final Pattern ISS_CLASS_ACTION_PATTERN = Pattern.compile(ISS_CLASS_ACTION_MATCHER);
     public static final Pattern EMAIL_SENTENCE_PATTERN = Pattern.compile(EMAIL_SENTENCE_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern EMAIL_COMPLIANCE_SENTENCE_PATTERN = Pattern.compile(EMAIL_COMPLIANCE_SENTENCE_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern EMAIL_PROXY_SENTENCE_PATTERN = Pattern.compile(EMAIL_PROXY_SENTENCE_MATCHER, Pattern.CASE_INSENSITIVE);
