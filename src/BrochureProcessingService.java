@@ -30,11 +30,15 @@ public class BrochureProcessingService {
     /**
      * Processes downloaded brochures and extracts information
      * @param inputFilePath the path to the CSV file containing firm data
+     * @param context processing context containing configuration and runtime state
      * @throws BrochureProcessingException if processing fails
      */
-    public void processBrochures(Path inputFilePath) throws BrochureProcessingException {
+    public void processBrochures(Path inputFilePath, ProcessingContext context) throws BrochureProcessingException {
         try (Reader reader = Files.newBufferedReader(inputFilePath, StandardCharsets.UTF_8);
              BufferedWriter writer = Files.newBufferedWriter(Paths.get(Config.BROCHURE_OUTPUT_PATH + "/" + "IAPD_Found.csv"), StandardCharsets.UTF_8)) {
+            
+            ProcessingLogger.logInfo("Starting brochure processing from file: " + inputFilePath);
+            context.setCurrentProcessingFile(inputFilePath.getFileName().toString());
             
             Iterable<CSVRecord> records = CSVFormat.EXCEL
                     .builder()
@@ -47,9 +51,18 @@ public class BrochureProcessingService {
             writer.write(Config.FOUND_FILE_HEADER + System.lineSeparator());
             
             for (CSVRecord csvRecord : records) {
-                processSingleBrochure(csvRecord, writer);
+                processSingleBrochure(csvRecord, writer, context);
+                
+                // Log progress periodically if verbose
+                if (context.isVerbose() && context.getBrochuresProcessed() % 50 == 0) {
+                    context.logCurrentState();
+                }
             }
+            
+            ProcessingLogger.logInfo("Brochure processing completed. Processed " + context.getBrochuresProcessed() + " brochures.");
+            
         } catch (Exception e) {
+            context.setLastError("Error processing brochures from file: " + inputFilePath + " - " + e.getMessage());
             throw new BrochureProcessingException("Error processing brochures from file: " + inputFilePath, e);
         }
     }
@@ -59,7 +72,7 @@ public class BrochureProcessingService {
     /**
      * Processes a single brochure record
      */
-    private void processSingleBrochure(CSVRecord csvRecord, Writer writer) throws Exception {
+    private void processSingleBrochure(CSVRecord csvRecord, Writer writer, ProcessingContext context) throws Exception {
         Map<String, String> recordMap = csvRecord.toMap();
         String brochureURL = recordMap.get("BrochureURL");
         String firmCrdNb = recordMap.get("FirmCrdNb");
@@ -85,6 +98,16 @@ public class BrochureProcessingService {
             String text = PdfTextExtractor.getCleanedBrochureText(stream);
             BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text, firmCrdNb);
             csvWriterService.writeBrochureAnalysis(writer, recordMap, analysis, brochureFile.getName(), brochureURL);
+            
+            // Update context with successful brochure processing
+            context.incrementBrochuresProcessed();
+            
+        } catch (Exception e) {
+            // Log error but continue processing other brochures
+            ProcessingLogger.logError("Error processing brochure for firm " + firmCrdNb + ": " + e.getMessage(), e);
+            if (context.isVerbose()) {
+                context.setLastError("Error processing brochure for firm " + firmCrdNb + ": " + e.getMessage());
+            }
         }
     }
     

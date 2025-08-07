@@ -31,10 +31,11 @@ public class XMLProcessingService {
    /**
  * Processes the XML file containing firm data
  * @param xmlFile the XML file to process
+ * @param context processing context containing configuration and runtime state
  * @return the Path of the output file that was written
  * @throws XMLProcessingException if processing fails
  */
-    public Path processXMLFile(File xmlFile) throws XMLProcessingException {
+    public Path processXMLFile(File xmlFile, ProcessingContext context) throws XMLProcessingException {
         ProcessingLogger.logInfo("Starting XML processing for file: " + xmlFile.getName());
         ProcessingLogger.resetCounters();
         
@@ -44,13 +45,14 @@ public class XMLProcessingService {
         try (OutputStreamWriter firmWriter = new OutputStreamWriter(
                 new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8)) {
             firmWriter.write(Config.FIRM_HEADER + System.lineSeparator());
-            parseXML(xmlFile, firmWriter);
+            parseXML(xmlFile, firmWriter, context);
             
             ProcessingLogger.logInfo("XML processing completed for file: " + xmlFile.getName());
             ProcessingLogger.printProcessingSummary();
             
             return outputFilePath;
         } catch (Exception e) {
+            context.setLastError("Critical error processing XML file: " + xmlFile.getName() + " - " + e.getMessage());
             ProcessingLogger.logError("Critical error processing XML file: " + xmlFile.getName(), e);
             throw new XMLProcessingException("Error processing XML file: " + xmlFile.getName(), e);
         }
@@ -89,23 +91,36 @@ public class XMLProcessingService {
     
     /**
      * Parses the XML file and extracts firm information
+     * @param xmlFile the XML file to parse
+     * @param firmWriter the writer to output firm data
+     * @param context processing context containing configuration and runtime state
      */
-    private void parseXML(File xmlFile, OutputStreamWriter firmWriter) throws Exception {
+    private void parseXML(File xmlFile, OutputStreamWriter firmWriter, ProcessingContext context) throws Exception {
         try (InputStream in = new FileInputStream(xmlFile)) {
             ProcessingLogger.logInfo("Processing: " + xmlFile.getCanonicalPath());
+            ProcessingLogger.logInfo("Index limit set to: " + (context.getIndexLimit() == Integer.MAX_VALUE ? "unlimited" : context.getIndexLimit()));
             
             XMLInputFactory factory = XMLInputFactory.newInstance();
             XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
-            int index = 0;
-            while (reader.hasNext() && index < Integer.MAX_VALUE) {
+            
+            while (reader.hasNext() && !context.hasReachedIndexLimit()) {
                 reader.next();
                 if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
                     "Firm".equals(reader.getLocalName())) {
-                	index++;
-                    if (!processNextFirm(reader, firmWriter)) {
+                    
+                    if (!processNextFirm(reader, firmWriter, context)) {
                         break;
                     }
+                    
+                    // Log progress periodically if verbose
+                    if (context.isVerbose() && context.getProcessedFirms() % 100 == 0) {
+                        context.logCurrentState();
+                    }
                 }
+            }
+            
+            if (context.hasReachedIndexLimit() && context.getIndexLimit() != Integer.MAX_VALUE) {
+                ProcessingLogger.logInfo("Reached index limit of " + context.getIndexLimit() + " firms. Processing stopped.");
             }
         }
     }
@@ -113,7 +128,7 @@ public class XMLProcessingService {
     /**
      * Processes a single firm record from the XML
      */
-    private boolean processNextFirm(XMLStreamReader reader, OutputStreamWriter firmWriter) throws Exception {
+    private boolean processNextFirm(XMLStreamReader reader, OutputStreamWriter firmWriter, ProcessingContext context) throws Exception {
         FirmDataBuilder firmBuilder = new FirmDataBuilder();
         
         while (reader.hasNext()) {
@@ -143,11 +158,12 @@ public class XMLProcessingService {
             } else if (reader.getEventType() == XMLStreamReader.END_ELEMENT && 
                       "Firm".equalsIgnoreCase(reader.getLocalName())) {
                 
-                // Increment firm counter
+                // Increment firm counter in both ProcessingLogger and ProcessingContext
                 ProcessingLogger.incrementTotalFirmsProcessed();
+                context.incrementProcessedFirms();
                 
                 // Get brochure URL and write complete record
-                String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb());
+                String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb(), context);
                 firmBuilder.setBrochureURL(brochureURL);
                 
                 writeFirmRecord(firmWriter, firmBuilder.build());
@@ -248,9 +264,9 @@ public class XMLProcessingService {
     }
     
     /**
-     * Retrieves the brochure URL for a given firm CRD number with retry logic
+     * Retrieves the brochure URL for a given firm CRD number (URL only, no downloading)
      */
-    private String getBrochureURL(String firmCrdNb) {
+    private String getBrochureURL(String firmCrdNb, ProcessingContext context) {
         // Use retry logic for getting brochure URL
         String brochureURL = RetryUtils.executeWithRetry(() -> {
             try {
@@ -261,19 +277,6 @@ public class XMLProcessingService {
                     Matcher matcher = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN.matcher(response);
                     if (matcher.find()) {
                         String foundBrochureURL = Config.BROCHURE_URL_BASE + matcher.group(1);
-                        String fileName = firmCrdNb + "_" + matcher.group(1) + ".pdf";
-                        
-                        // Try to download the brochure (this may also fail)
-                        try {
-                            downloadService.downloadBrochure(foundBrochureURL, fileName);
-                            ProcessingLogger.incrementFirmsWithBrochures();
-                        } catch (Exception downloadException) {
-                            ProcessingLogger.logWarning("Failed to download brochure for firm " + firmCrdNb + 
-                                                       ": " + downloadException.getMessage());
-                            ProcessingLogger.incrementBrochureDownloadFailures();
-                            // Continue processing even if download fails - we still have the URL
-                        }
-                        
                         return foundBrochureURL;
                     } else {
                         ProcessingLogger.logWarning("No brochure version ID found in API response for firm: " + firmCrdNb);
