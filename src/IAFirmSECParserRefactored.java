@@ -20,7 +20,7 @@ public class IAFirmSECParserRefactored {
     public IAFirmSECParserRefactored() {
         // Initialize services with dependency injection
         this.fileDownloadService = new FileDownloadService();
-        this.xmlProcessingService = new XMLProcessingService(fileDownloadService);
+        this.xmlProcessingService = new XMLProcessingService();
         this.brochureDownloadService = new BrochureDownloadService(fileDownloadService);
         this.configurationManager = new ConfigurationManager();
         

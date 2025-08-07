@@ -15,11 +15,9 @@ import javax.xml.stream.XMLStreamReader;
  * Service class responsible for XML processing operations
  */
 public class XMLProcessingService {
-    
-    private final FileDownloadService downloadService;
-    
-    public XMLProcessingService(FileDownloadService downloadService) {
-        this.downloadService = downloadService;
+
+    public XMLProcessingService() {
+      
     }
     
     /**
