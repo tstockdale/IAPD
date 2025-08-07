@@ -7,6 +7,11 @@ public class CommandLineOptions {
     private int indexLimit = Integer.MAX_VALUE;
     private boolean verbose = false;
     private boolean showHelp = false;
+    private boolean resumeEnabled = false;
+    private boolean resumeDownloads = false;
+    private boolean resumeProcessing = false;
+    private boolean validatePdfs = true;
+    private boolean forceRestart = false;
     
     /**
      * Parses command line arguments and returns a CommandLineOptions object
@@ -46,6 +51,33 @@ public class CommandLineOptions {
                     options.showHelp = true;
                     break;
                     
+                case "--resume":
+                case "-r":
+                    options.resumeEnabled = true;
+                    options.resumeDownloads = true;
+                    options.resumeProcessing = true;
+                    break;
+                    
+                case "--resume-downloads":
+                    options.resumeDownloads = true;
+                    break;
+                    
+                case "--resume-processing":
+                    options.resumeProcessing = true;
+                    break;
+                    
+                case "--validate-pdfs":
+                    options.validatePdfs = true;
+                    break;
+                    
+                case "--no-validate-pdfs":
+                    options.validatePdfs = false;
+                    break;
+                    
+                case "--force-restart":
+                    options.forceRestart = true;
+                    break;
+                    
                 default:
                     throw new IllegalArgumentException("Unknown argument: " + arg);
             }
@@ -66,12 +98,20 @@ public class CommandLineOptions {
         System.out.println("  -l, --index-limit <number>    Set the maximum number of firms to process");
         System.out.println("                                (default: " + Integer.MAX_VALUE + " - no limit)");
         System.out.println("  -v, --verbose                 Enable verbose logging");
+        System.out.println("  -r, --resume                  Enable resume for both downloads and processing");
+        System.out.println("      --resume-downloads        Enable resume for brochure downloads only");
+        System.out.println("      --resume-processing       Enable resume for brochure processing only");
+        System.out.println("      --validate-pdfs           Validate existing PDF files during resume (default)");
+        System.out.println("      --no-validate-pdfs        Skip PDF validation during resume");
+        System.out.println("      --force-restart           Ignore existing files and start fresh");
         System.out.println("  -h, --help                    Show this help message");
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  java IAFirmSECParserRefactored");
         System.out.println("  java IAFirmSECParserRefactored --index-limit 1000");
         System.out.println("  java IAFirmSECParserRefactored -l 500 --verbose");
+        System.out.println("  java IAFirmSECParserRefactored --resume --index-limit 1000");
+        System.out.println("  java IAFirmSECParserRefactored --resume-downloads --validate-pdfs");
     }
     
     // Getters
@@ -87,6 +127,26 @@ public class CommandLineOptions {
         return showHelp;
     }
     
+    public boolean isResumeEnabled() {
+        return resumeEnabled;
+    }
+    
+    public boolean isResumeDownloads() {
+        return resumeDownloads;
+    }
+    
+    public boolean isResumeProcessing() {
+        return resumeProcessing;
+    }
+    
+    public boolean isValidatePdfs() {
+        return validatePdfs;
+    }
+    
+    public boolean isForceRestart() {
+        return forceRestart;
+    }
+    
     // Setters for testing or programmatic configuration
     public void setIndexLimit(int indexLimit) {
         this.indexLimit = indexLimit;
@@ -96,12 +156,37 @@ public class CommandLineOptions {
         this.verbose = verbose;
     }
     
+    public void setResumeEnabled(boolean resumeEnabled) {
+        this.resumeEnabled = resumeEnabled;
+    }
+    
+    public void setResumeDownloads(boolean resumeDownloads) {
+        this.resumeDownloads = resumeDownloads;
+    }
+    
+    public void setResumeProcessing(boolean resumeProcessing) {
+        this.resumeProcessing = resumeProcessing;
+    }
+    
+    public void setValidatePdfs(boolean validatePdfs) {
+        this.validatePdfs = validatePdfs;
+    }
+    
+    public void setForceRestart(boolean forceRestart) {
+        this.forceRestart = forceRestart;
+    }
+    
     @Override
     public String toString() {
         return "CommandLineOptions{" +
                 "indexLimit=" + indexLimit +
                 ", verbose=" + verbose +
                 ", showHelp=" + showHelp +
+                ", resumeEnabled=" + resumeEnabled +
+                ", resumeDownloads=" + resumeDownloads +
+                ", resumeProcessing=" + resumeProcessing +
+                ", validatePdfs=" + validatePdfs +
+                ", forceRestart=" + forceRestart +
                 '}';
     }
 }

@@ -14,6 +14,10 @@ public class ProcessingContext {
     private final String outputFormat;
     private final int retryCount;
     private final boolean skipBrochureDownload;
+    private final boolean resumeDownloads;
+    private final boolean resumeProcessing;
+    private final boolean validatePdfs;
+    private final boolean forceRestart;
     private final String configSource;
     private final LocalDateTime createdAt;
     
@@ -34,6 +38,10 @@ public class ProcessingContext {
         this.outputFormat = builder.outputFormat;
         this.retryCount = builder.retryCount;
         this.skipBrochureDownload = builder.skipBrochureDownload;
+        this.resumeDownloads = builder.resumeDownloads;
+        this.resumeProcessing = builder.resumeProcessing;
+        this.validatePdfs = builder.validatePdfs;
+        this.forceRestart = builder.forceRestart;
         this.configSource = builder.configSource;
         this.createdAt = LocalDateTime.now();
         this.processingStartTime.set(System.currentTimeMillis());
@@ -45,6 +53,10 @@ public class ProcessingContext {
     public String getOutputFormat() { return outputFormat; }
     public int getRetryCount() { return retryCount; }
     public boolean isSkipBrochureDownload() { return skipBrochureDownload; }
+    public boolean isResumeDownloads() { return resumeDownloads; }
+    public boolean isResumeProcessing() { return resumeProcessing; }
+    public boolean isValidatePdfs() { return validatePdfs; }
+    public boolean isForceRestart() { return forceRestart; }
     public String getConfigSource() { return configSource; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     
@@ -125,6 +137,10 @@ public class ProcessingContext {
         private String outputFormat = "CSV";
         private int retryCount = 3;
         private boolean skipBrochureDownload = false;
+        private boolean resumeDownloads = false;
+        private boolean resumeProcessing = false;
+        private boolean validatePdfs = true;
+        private boolean forceRestart = false;
         private String configSource = "default";
         
         public Builder indexLimit(int indexLimit) {
@@ -161,6 +177,26 @@ public class ProcessingContext {
             return this;
         }
         
+        public Builder resumeDownloads(boolean resumeDownloads) {
+            this.resumeDownloads = resumeDownloads;
+            return this;
+        }
+        
+        public Builder resumeProcessing(boolean resumeProcessing) {
+            this.resumeProcessing = resumeProcessing;
+            return this;
+        }
+        
+        public Builder validatePdfs(boolean validatePdfs) {
+            this.validatePdfs = validatePdfs;
+            return this;
+        }
+        
+        public Builder forceRestart(boolean forceRestart) {
+            this.forceRestart = forceRestart;
+            return this;
+        }
+        
         public Builder configSource(String configSource) {
             this.configSource = configSource != null ? configSource : "unknown";
             return this;
@@ -185,6 +221,10 @@ public class ProcessingContext {
         return builder()
                 .indexLimit(options.getIndexLimit())
                 .verbose(options.isVerbose())
+                .resumeDownloads(options.isResumeDownloads())
+                .resumeProcessing(options.isResumeProcessing())
+                .validatePdfs(options.isValidatePdfs())
+                .forceRestart(options.isForceRestart())
                 .configSource("command-line")
                 .build();
     }
