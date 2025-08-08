@@ -7,6 +7,9 @@ import java.util.regex.Matcher;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
@@ -37,6 +40,18 @@ public class XMLProcessingService {
         ProcessingLogger.logInfo("Starting XML processing for file: " + xmlFile.getName());
         ProcessingLogger.resetCounters();
         
+        // Check if incremental processing is enabled
+        if (context.isIncrementalUpdates() && context.getBaselineFilePath() != null) {
+            return processXMLFileIncremental(xmlFile, context);
+        } else {
+            return processXMLFileStandard(xmlFile, context);
+        }
+    }
+    
+    /**
+     * Processes XML file in standard mode (all firms)
+     */
+    private Path processXMLFileStandard(File xmlFile, ProcessingContext context) throws XMLProcessingException {
         String outputFileName = constructOutputFileName(xmlFile.getName());
         Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
@@ -53,6 +68,64 @@ public class XMLProcessingService {
             context.setLastError("Critical error processing XML file: " + xmlFile.getName() + " - " + e.getMessage());
             ProcessingLogger.logError("Critical error processing XML file: " + xmlFile.getName(), e);
             throw new XMLProcessingException("Error processing XML file: " + xmlFile.getName(), e);
+        }
+    }
+    
+    /**
+     * Processes XML file in incremental mode (only new/updated firms)
+     */
+    private Path processXMLFileIncremental(File xmlFile, ProcessingContext context) throws XMLProcessingException {
+        IncrementalUpdateManager incrementalManager = new IncrementalUpdateManager();
+        Path baselineFile = Paths.get(context.getBaselineFilePath());
+        
+        // Validate baseline file structure
+        if (!incrementalManager.validateBaselineFileStructure(baselineFile)) {
+            ProcessingLogger.logWarning("Baseline file structure invalid or missing. Falling back to standard processing.");
+            return processXMLFileStandard(xmlFile, context);
+        }
+        
+        try {
+            // First pass: collect all firm data from XML
+            List<FirmData> allFirms = collectAllFirmData(xmlFile, context);
+            
+            // Load historical filing dates
+            Map<String, String> historicalDates = incrementalManager.getHistoricalFilingDates(baselineFile);
+            
+            // Calculate incremental statistics
+            IncrementalUpdateManager.IncrementalStats stats = 
+                    incrementalManager.calculateIncrementalStats(allFirms, historicalDates);
+            
+            // Log incremental statistics
+            incrementalManager.logIncrementalStats(stats, baselineFile);
+            
+            // Filter firms for processing
+            List<FirmData> firmsToProcess = incrementalManager.filterFirmsForProcessing(allFirms, historicalDates);
+            
+            // Generate incremental output file name
+            String baseFileName = extractBaseFileName(xmlFile.getName());
+            String dateString = extractDateString(xmlFile.getName());
+            String incrementalFileName = incrementalManager.generateIncrementalFileName(baseFileName, dateString, ".csv");
+            Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, incrementalFileName);
+            
+            // Write filtered firms to output file
+            try (OutputStreamWriter firmWriter = new OutputStreamWriter(
+                    new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8)) {
+                firmWriter.write(Config.FIRM_HEADER + System.lineSeparator());
+                
+                for (FirmData firm : firmsToProcess) {
+                    writeFirmRecord(firmWriter, firm);
+                }
+            }
+            
+            ProcessingLogger.logInfo("Incremental XML processing completed. Output file: " + outputFilePath);
+            ProcessingLogger.logInfo("Processed " + firmsToProcess.size() + " firms out of " + allFirms.size() + " total firms");
+            
+            return outputFilePath;
+            
+        } catch (Exception e) {
+            context.setLastError("Critical error in incremental XML processing: " + xmlFile.getName() + " - " + e.getMessage());
+            ProcessingLogger.logError("Critical error in incremental XML processing: " + xmlFile.getName(), e);
+            throw new XMLProcessingException("Error in incremental XML processing: " + xmlFile.getName(), e);
         }
     }
     
@@ -300,5 +373,114 @@ public class XMLProcessingService {
         }
         
         return brochureURL;
+    }
+    
+    /**
+     * Collects all firm data from XML file without writing to output
+     * Used for incremental processing to get complete firm list first
+     */
+    private List<FirmData> collectAllFirmData(File xmlFile, ProcessingContext context) throws Exception {
+        List<FirmData> allFirms = new ArrayList<>();
+        
+        try (InputStream in = new FileInputStream(xmlFile)) {
+            XMLInputFactory factory = XMLInputFactory.newInstance();
+            XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
+            
+            while (reader.hasNext() && !context.hasReachedIndexLimit()) {
+                reader.next();
+                if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
+                    "Firm".equals(reader.getLocalName())) {
+                    
+                    FirmData firmData = collectNextFirmData(reader, context);
+                    if (firmData != null) {
+                        allFirms.add(firmData);
+                        context.incrementProcessedFirms();
+                        
+                        // Log progress periodically if verbose
+                        if (context.isVerbose() && allFirms.size() % 100 == 0) {
+                            ProcessingLogger.logInfo("Collected " + allFirms.size() + " firms for incremental analysis...");
+                        }
+                    }
+                }
+            }
+        }
+        
+        ProcessingLogger.logInfo("Collected " + allFirms.size() + " total firms from XML for incremental processing");
+        return allFirms;
+    }
+    
+    /**
+     * Collects a single firm's data from XML without writing to output
+     */
+    private FirmData collectNextFirmData(XMLStreamReader reader, ProcessingContext context) throws Exception {
+        FirmDataBuilder firmBuilder = new FirmDataBuilder();
+        
+        while (reader.hasNext()) {
+            if (reader.getEventType() == XMLStreamReader.START_ELEMENT) {
+                String elementName = reader.getLocalName();
+                
+                switch (elementName) {
+                    case "Info":
+                        processInfoElement(reader, firmBuilder);
+                        break;
+                    case "Rgstn":
+                        processRegistrationElement(reader, firmBuilder);
+                        break;
+                    case "Filing":
+                        processFilingElement(reader, firmBuilder);
+                        break;
+                    case "MainAddr":
+                        processAddressElement(reader, firmBuilder);
+                        break;
+                    case "Item5A":
+                        processEmployeeElement(reader, firmBuilder);
+                        break;
+                    case "Item5F":
+                        processAUMElement(reader, firmBuilder);
+                        break;
+                }
+            } else if (reader.getEventType() == XMLStreamReader.END_ELEMENT && 
+                      "Firm".equalsIgnoreCase(reader.getLocalName())) {
+                
+                // Get brochure URL and build complete firm data
+                String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb(), context);
+                firmBuilder.setBrochureURL(brochureURL);
+                
+                return firmBuilder.build();
+            }
+            reader.next();
+        }
+        return null;
+    }
+    
+    /**
+     * Extracts base file name from input file name
+     * e.g., "IA_FIRM_SEC_Feed_04_07_2025.xml" -> "IA_FIRM_SEC_DATA"
+     */
+    private String extractBaseFileName(String inputFileName) {
+        return "IA_FIRM_SEC_DATA";
+    }
+    
+    /**
+     * Extracts date string from input file name
+     * e.g., "IA_FIRM_SEC_Feed_04_07_2025.xml" -> "20250407"
+     */
+    private String extractDateString(String inputFileName) {
+        try {
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("IA_FIRM_SEC_Feed_(\\d{2})_(\\d{2})_(\\d{4})\\.xml");
+            java.util.regex.Matcher matcher = pattern.matcher(inputFileName);
+            
+            if (matcher.find()) {
+                String month = matcher.group(1);
+                String day = matcher.group(2);
+                String year = matcher.group(3);
+                return year + month + day;
+            } else {
+                return String.valueOf(System.currentTimeMillis());
+            }
+        } catch (Exception e) {
+            ProcessingLogger.logError("Error extracting date from filename: " + inputFileName, e);
+            return String.valueOf(System.currentTimeMillis());
+        }
     }
 }

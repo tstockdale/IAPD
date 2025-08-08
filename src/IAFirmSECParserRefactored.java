@@ -16,6 +16,8 @@ public class IAFirmSECParserRefactored {
     private final BrochureProcessingService brochureProcessingService;
     private final FileDownloadService fileDownloadService;
     private final ConfigurationManager configurationManager;
+    private final IncrementalUpdateManager incrementalUpdateManager;
+    private final ResumeStateManager resumeStateManager;
     
     public IAFirmSECParserRefactored() {
         // Initialize services with dependency injection
@@ -23,6 +25,8 @@ public class IAFirmSECParserRefactored {
         this.xmlProcessingService = new XMLProcessingService();
         this.brochureDownloadService = new BrochureDownloadService(fileDownloadService);
         this.configurationManager = new ConfigurationManager();
+        this.incrementalUpdateManager = new IncrementalUpdateManager();
+        this.resumeStateManager = new ResumeStateManager();
         
         BrochureAnalyzer brochureAnalyzer = new BrochureAnalyzer();
         CSVWriterService csvWriterService = new CSVWriterService();
