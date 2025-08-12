@@ -11,6 +11,7 @@ public class CSVWriterService {
      */
     public void writeBrochureAnalysis(Writer writer, Map<String, String> recordMap, 
                                      BrochureAnalysis analysis, String fileName, String brochureURL) throws Exception {
+        writer.write(Config.getCurrentDateString() + ",");
         writer.write(recordMap.get("SECRgmCD") + ",");
         writer.write(recordMap.get("FirmCrdNb") + ",");
         writer.write(recordMap.get("SECMb") + ",");
@@ -47,6 +48,7 @@ public class CSVWriterService {
      */
     public void writeCustodialServicesRecord(Writer writer, Map<String, String> recordMap, 
                                             String custodialText, String fileName, String brochureURL) throws Exception {
+        writer.write(Config.getCurrentDateString() + ",");
         writer.write('"' + custodialText.replaceAll(",", " ").replaceAll("\"", "'") + '"' + ",");
         writer.write(recordMap.get("SECRgmCD") + ",");
         writer.write(recordMap.get("FirmCrdNb") + ",");

@@ -26,6 +26,16 @@ public class ProcessingLogger {
     }
     
     /**
+     * Public method to explicitly initialize the ProcessingLogger
+     * This forces the static block to run and ensures proper initialization
+     */
+    public static void initialize() {
+        // This method forces the static block to execute
+        // The actual initialization happens in the static block above
+        System.out.println("ProcessingLogger explicitly initialized");
+    }
+    
+    /**
      * Ensures the log directory exists before logging starts
      */
     private static void ensureLogDirectoryExists() {
@@ -44,6 +54,7 @@ public class ProcessingLogger {
             
             // Set system property for log path so log4j2.xml can use it
             System.setProperty("log.path", logPath);
+            System.out.println("Log path is " + System.getProperty("log.path"));
             
         } catch (Exception e) {
             System.err.println("Failed to ensure log directory exists: " + e.getMessage());

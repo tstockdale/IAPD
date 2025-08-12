@@ -85,6 +85,7 @@ public class XMLProcessingService {
         }
         
         try {
+        	ProcessingLogger.logInfo("Incremental XML processing started.");
             // First pass: collect all firm data from XML
             List<FirmData> allFirms = collectAllFirmData(xmlFile, context);
             
@@ -299,6 +300,7 @@ public class XMLProcessingService {
      * Writes a complete firm record to CSV
      */
     private void writeFirmRecord(OutputStreamWriter writer, FirmData firmData) throws Exception {
+        writer.write(Config.getCurrentDateString() + ",");
         writer.write(firmData.getSECRgnCD() + ",");
         writer.write(firmData.getFirmCrdNb() + ",");
         writer.write(firmData.getSECNb() + ",");

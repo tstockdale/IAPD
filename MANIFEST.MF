@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Main-Class: IAFirmSECParserRefactored
+Class-Path: lib/log4j-api-2.20.0.jar lib/log4j-core-2.20.0.jar lib/commons-csv-1.9.0.jar lib/pdfbox-2.0.24.jar lib/fontbox-2.0.24.jar lib/commons-logging-1.2.jar
+Created-By: IAPD Parser Build Script
+Implementation-Title: Investment Adviser Public Disclosure Parser
+Implementation-Version: 1.0
+Implementation-Vendor: ISS

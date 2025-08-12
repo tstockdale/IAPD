@@ -34,9 +34,45 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
+     * Initializes the logging system early to ensure log files are created in the correct location
+     * This must be called before any logging operations occur
+     */
+    private static void initializeLoggingSystem() {
+        try {
+            // Set up log path system property early
+            String logPath = Config.LOG_PATH.startsWith("./") ? Config.LOG_PATH.substring(2) : Config.LOG_PATH;
+            System.setProperty("log.path", logPath);
+            
+            // Create log directory if it doesn't exist
+            String logDir = System.getProperty("user.dir") + File.separator + logPath;
+            File logDirectory = new File(logDir);
+            if (!logDirectory.exists()) {
+                boolean created = logDirectory.mkdirs();
+                if (created) {
+                    System.out.println("Created log directory: " + logDir);
+                } else {
+                    System.err.println("Failed to create log directory: " + logDir);
+                }
+            }
+            
+            // Force ProcessingLogger initialization to ensure static block runs
+            ProcessingLogger.initialize();
+            
+            System.out.println("Logging system initialized. Log path: " + System.getProperty("log.path"));
+            
+        } catch (Exception e) {
+            System.err.println("Failed to initialize logging system: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
      * Main entry point for the application
      */
     public static void main(String[] args) {
+        // Initialize logging system early - MUST be first to ensure log files are created properly
+        initializeLoggingSystem();
+        
         IAFirmSECParserRefactored parser = new IAFirmSECParserRefactored();
         
         try {

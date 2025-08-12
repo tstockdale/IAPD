@@ -197,7 +197,7 @@ public class BrochureDownloadService {
             }
             
             // Extract brochure version ID from URL
-            Matcher matcher = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN.matcher(brochureURL);
+            Matcher matcher = PatternMatchers.BRCHR_VERSION_ID_PATTERN.matcher(brochureURL);
             if (!matcher.find()) {
                 ProcessingLogger.logWarning("Could not extract version ID from brochure URL for firm: " + firmCrdNb);
                 return "INVALID_URL";
@@ -242,8 +242,16 @@ public class BrochureDownloadService {
      * Writes a firm record with download status to the output CSV
      */
     private void writeFirmRecordWithDownloadStatus(BufferedWriter writer, CSVRecord csvRecord, String downloadStatus) throws Exception {
-        // Write all original columns
-        for (int i = 0; i < csvRecord.size(); i++) {
+        // Write timestamp as first column
+        writer.write(Config.getCurrentDateString() + ",");
+        
+        // Write all original columns (skip the first one if it's already dateAdded from input)
+        int startIndex = 0;
+        if (csvRecord.size() > 0 && csvRecord.get(0) != null && csvRecord.get(0).matches("\\d{2}/\\d{2}/\\d{4}")) {
+            startIndex = 1; // Skip existing dateAdded column from input
+        }
+        
+        for (int i = startIndex; i < csvRecord.size(); i++) {
             String value = csvRecord.get(i);
             if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
                 writer.write("\"" + value.replaceAll("\"", "\"\"") + "\"");

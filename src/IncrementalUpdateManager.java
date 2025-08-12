@@ -172,6 +172,7 @@ public class IncrementalUpdateManager {
                 firmsToProcess.add(firmCrdNb);
             }
         }
+        ProcessingLogger.logInfo("Incremental number of firms to process = " + firmsToProcess.size() + ".");
         
         return firmsToProcess;
     }
