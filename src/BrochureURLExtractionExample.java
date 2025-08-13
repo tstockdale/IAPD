@@ -15,7 +15,7 @@ public class BrochureURLExtractionExample {
             // Create processing context
             ProcessingContext context = ProcessingContext.builder()
                     .indexLimit(10) // Process only 10 firms for demo
-                    .xmlRatePerSecond(2) // 2 requests per second to be respectful to API
+                    .urlRatePerSecond(2) // 2 requests per second to be respectful to API
                     .verbose(true)
                     .configSource("example")
                     .build();

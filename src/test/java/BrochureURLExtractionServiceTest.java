@@ -21,7 +21,7 @@ public class BrochureURLExtractionServiceTest {
         service = new BrochureURLExtractionService();
         context = ProcessingContext.builder()
                 .indexLimit(5) // Limit for testing
-                .xmlRatePerSecond(1) // Slow rate for testing
+                .urlRatePerSecond(1) // Slow rate for testing
                 .verbose(false)
                 .build();
     }

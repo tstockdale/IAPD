@@ -49,15 +49,26 @@ public class BrochureURLExtractionService {
         String outputFileName = constructFilesToDownloadFileName(inputCsvFile.getName());
         Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
-        List<BrochureDownloadRecord> downloadRecords = new ArrayList<>();
-        
+        // Initialize CSV writer for streaming output
         try (FileInputStream fis = new FileInputStream(inputCsvFile);
              CSVParser parser = CSVFormat.EXCEL
                      .builder()
                      .setHeader()
                      .setSkipHeaderRecord(true)
                      .build()
-                     .parse(new java.io.InputStreamReader(fis, StandardCharsets.UTF_8))) {
+                     .parse(new java.io.InputStreamReader(fis, StandardCharsets.UTF_8));
+             OutputStreamWriter osw = new OutputStreamWriter(
+                     new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8);
+             CSVPrinter csvPrinter = new CSVPrinter(osw, CSVFormat.EXCEL
+                     .builder()
+                     .setQuoteMode(QuoteMode.MINIMAL)
+                     .setRecordSeparator(System.lineSeparator())
+                     .build())) {
+            
+            // Write header immediately
+            String[] headers = FILES_TO_DOWNLOAD_HEADER.split(",");
+            csvPrinter.printRecord((Object[]) headers);
+            csvPrinter.flush(); // Ensure header is written immediately
             
             RateLimiter limiter = RateLimiter.perSecond(context.getURLRatePerSecond());
             
@@ -90,14 +101,26 @@ public class BrochureURLExtractionService {
                         } else {
                             stats.firmsWithManyBrochures++;
                         }
+                        
+                        // Stream records immediately as they are created
+                        for (BrochureDownloadRecord brochureRecord : firmBrochures) {
+                            csvPrinter.printRecord(
+                                brochureRecord.getFirmId(),
+                                sanitizeValue(brochureRecord.getFirmName()),
+                                brochureRecord.getBrochureVersionId(),
+                                sanitizeValue(brochureRecord.getBrochureName()),
+                                brochureRecord.getDateSubmitted(),
+                                brochureRecord.getDateConfirmed()
+                            );
+                        }
+                        csvPrinter.flush(); // Ensure records are written immediately
                     }
                     
-                    downloadRecords.addAll(firmBrochures);
                     context.incrementProcessedFirms();
                     
                     // Log progress periodically if verbose
                     if (context.isVerbose() && stats.firmsProcessed % 100 == 0) {
-                        logProgressStats(stats, downloadRecords.size());
+                        logProgressStats(stats, stats.totalBrochuresFound);
                     }
                     
                     // Rate limiting
@@ -107,31 +130,20 @@ public class BrochureURLExtractionService {
                 }
             }
             
-        } catch (Exception e) {
-            stats.processingErrors++;
-            context.setLastError("Error reading input CSV file: " + inputCsvFile.getName() + " - " + e.getMessage());
-            ProcessingLogger.logError("Error reading input CSV file: " + inputCsvFile.getName(), e);
-            throw new BrochureProcessingException("Error reading input CSV file: " + inputCsvFile.getName(), e);
-        }
-        
-        // Write FilesToDownload output file
-        try {
-            writeFilesToDownloadFile(outputFilePath, downloadRecords);
-            
             // Calculate final statistics
             long endTime = System.currentTimeMillis();
             stats.processingTimeMs = endTime - startTime;
             
             // Log comprehensive final statistics
-            logFinalStats(stats, downloadRecords.size(), outputFilePath);
+            logFinalStats(stats, stats.totalBrochuresFound, outputFilePath);
             
             return outputFilePath;
             
         } catch (Exception e) {
             stats.processingErrors++;
-            context.setLastError("Error writing FilesToDownload file: " + outputFilePath + " - " + e.getMessage());
-            ProcessingLogger.logError("Error writing FilesToDownload file: " + outputFilePath, e);
-            throw new BrochureProcessingException("Error writing FilesToDownload file: " + outputFilePath, e);
+            context.setLastError("Error processing CSV file: " + inputCsvFile.getName() + " - " + e.getMessage());
+            ProcessingLogger.logError("Error processing CSV file: " + inputCsvFile.getName(), e);
+            throw new BrochureProcessingException("Error processing CSV file: " + inputCsvFile.getName(), e);
         }
     }
     
@@ -249,35 +261,6 @@ public class BrochureURLExtractionService {
         return brochures;
     }
     
-    /**
-     * Writes the FilesToDownload CSV file
-     */
-    private void writeFilesToDownloadFile(Path outputFilePath, List<BrochureDownloadRecord> records) throws Exception {
-        try (OutputStreamWriter osw = new OutputStreamWriter(
-                new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8);
-             CSVPrinter printer = new CSVPrinter(osw, CSVFormat.EXCEL
-                     .builder()
-                     .setQuoteMode(QuoteMode.MINIMAL)
-                     .setRecordSeparator(System.lineSeparator())
-                     .build())) {
-            
-            // Write header
-            String[] headers = FILES_TO_DOWNLOAD_HEADER.split(",");
-            printer.printRecord((Object[]) headers);
-            
-            // Write records
-            for (BrochureDownloadRecord record : records) {
-                printer.printRecord(
-                    record.getFirmId(),
-                    sanitizeValue(record.getFirmName()),
-                    record.getBrochureVersionId(),
-                    sanitizeValue(record.getBrochureName()),
-                    record.getDateSubmitted(),
-                    record.getDateConfirmed()
-                );
-            }
-        }
-    }
     
     /**
      * Constructs the FilesToDownload output file name based on the input file name

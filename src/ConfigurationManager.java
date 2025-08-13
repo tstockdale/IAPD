@@ -113,7 +113,7 @@ public class ConfigurationManager {
             if (props.containsKey("rate.limit.xml.per.second")) {
                 try {
                     int rate = Integer.parseInt(props.getProperty("rate.limit.xml.per.second"));
-                    builder.xmlRatePerSecond(rate);
+                    builder.urlRatePerSecond(rate);
                 } catch (IllegalArgumentException e) {
                     System.err.println("Warning: Invalid rate.limit.xml.per.second in config file: " + props.getProperty("rate.limit.xml.per.second"));
                 }
@@ -152,8 +152,8 @@ public class ConfigurationManager {
                    .configSource("command-line");
             
             // Optional rate overrides
-            if (options.getXmlRatePerSecond() != null) {
-                builder.xmlRatePerSecond(options.getXmlRatePerSecond());
+            if (options.getURLRatePerSecond() != null) {
+                builder.urlRatePerSecond(options.getURLRatePerSecond());
             }
             if (options.getDownloadRatePerSecond() != null) {
                 builder.downloadRatePerSecond(options.getDownloadRatePerSecond());
@@ -272,7 +272,7 @@ public class ConfigurationManager {
         System.out.println("Output Format: " + context.getOutputFormat());
         System.out.println("Retry Count: " + context.getRetryCount());
         System.out.println("Skip Brochure Download: " + context.isSkipBrochureDownload());
-    System.out.println("XML Rate (ops/sec): " + context.getXmlRatePerSecond());
+    System.out.println("XML Rate (ops/sec): " + context.getURLRatePerSecond());
     System.out.println("Download Rate (ops/sec): " + context.getDownloadRatePerSecond());
         System.out.println("Created At: " + context.getCreatedAt());
         System.out.println("===============================");

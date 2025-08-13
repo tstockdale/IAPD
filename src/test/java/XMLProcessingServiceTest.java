@@ -50,7 +50,7 @@ public class XMLProcessingServiceTest {
             fw.write(xml);
         }
 
-        ProcessingContext ctx = ProcessingContext.builder().xmlRatePerSecond(1000).downloadRatePerSecond(1000).build();
+        ProcessingContext ctx = ProcessingContext.builder().urlRatePerSecond(1000).downloadRatePerSecond(1000).build();
         XMLProcessingService service = new XMLProcessingService();
 
         Path out = service.processXMLFile(xmlFile.toFile(), ctx);
