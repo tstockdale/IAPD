@@ -363,7 +363,7 @@ public class BrochureDownloadService {
                             
                             if ("SUCCESS".equals(downloadResult)) {
                                 context.incrementSuccessfulDownloads();
-                                ProcessingLogger.incrementFirmsWithBrochures();
+                                ProcessingLogger.incrementBrochuresDownloadedCount();
                                 fileName = finalFileName;
                             } else {
                                 context.incrementFailedDownloads();

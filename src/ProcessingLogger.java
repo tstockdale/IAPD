@@ -68,6 +68,7 @@ public class ProcessingLogger {
     private static final AtomicInteger brochureDownloadFailures = new AtomicInteger(0);
     private static final AtomicInteger filenameParsingFailures = new AtomicInteger(0);
     private static final AtomicInteger totalFirmsProcessed = new AtomicInteger(0);
+    private static final AtomicInteger brochuresDownloadedCount = new AtomicInteger(0);
     
     // Provider match counters
     private static final AtomicInteger glassLewisMatches = new AtomicInteger(0);
@@ -109,6 +110,11 @@ public class ProcessingLogger {
     public static void incrementFirmsWithBrochures() {
     	int count = firmsWithBrochures.incrementAndGet();
     	logger.info("Firms with brochures count incremented to: {}", count);
+    }
+
+    public static void incrementBrochuresDownloadedCount() {
+    	int count = brochuresDownloadedCount.incrementAndGet();
+    	logger.info("Brochures downloaded count incremented to: {}", count);
     }
     
     public static void incrementBrochureDownloadFailures() {
@@ -160,6 +166,10 @@ public class ProcessingLogger {
     
     public static int getFirmsWithBrochures() {
     	return firmsWithBrochures.get();
+    }
+
+    public static int getBrochuresDownloadedCount() {
+        return brochuresDownloadedCount.get();
     }
     
     public static int getBrochureDownloadFailures() {
