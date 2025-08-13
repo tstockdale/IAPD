@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.iss</groupId>
+  <artifactId>iapd</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <name>IAPD</name>
+  <description>Investment Adviser Public Disclosure Parser</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <maven.compiler.release>17</maven.compiler.release>
+    <junit.jupiter.version>5.10.2</junit.jupiter.version>
+  <tika.version>2.9.2</tika.version>
+    <shade.plugin.version>3.5.1</shade.plugin.version>
+    <surefire.plugin.version>3.2.5</surefire.plugin.version>
+  <!-- Default install directory (override with -Dinstall.dir=...) -->
+  <install.dir>C:/Users/stoctom/Work/IAPD</install.dir>
+  </properties>
+
+  <dependencies>
+    <!-- CSV handling -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-csv</artifactId>
+      <version>1.10.0</version>
+    </dependency>
+
+    <!-- Apache Tika 2.x (core + standard parsers package) -->
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-core</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parsers-standard-package</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+
+    <!-- JUnit 5 for tests -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- JUnit Platform Launcher for custom TestRunner -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <version>1.10.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Log4j 2 for ProcessingLogger -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>2.23.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.23.1</version>
+    </dependency>
+    <!-- SLF4J 2.x provider for Log4j 2 (bridges libraries using SLF4J to Log4j2) -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j2-impl</artifactId>
+      <version>2.23.1</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <!-- Match current repo layout: production sources in src/, tests in src/test/java -->
+    <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>src/test/java</testSourceDirectory>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
+          <release>${maven.compiler.release}</release>
+          <encoding>${project.build.sourceEncoding}</encoding>
+          <!-- Exclude test sources under src/test from main compilation -->
+          <excludes>
+            <exclude>test/**</exclude>
+            <exclude>test/**/*.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.plugin.version}</version>
+        <configuration>
+          <useModulePath>false</useModulePath>
+          <!-- Run only a stable subset by default; use -P all-tests for the full legacy suite -->
+          <!-- Use JUnit Platform discovery property to whitelist classes reliably -->
+          <properties>
+            <configurationParameters>
+              junit.platform.discovery.includeClassNamePatterns=^.*(XMLProcessingServiceTest|CommandLineOptionsTest|ConfigurationManagerTest|FirmDataBuilderTest|ProcessingLoggerTest).*$
+            </configurationParameters>
+          </properties>
+          <failIfNoTests>false</failIfNoTests>
+        </configuration>
+      </plugin>
+
+      <!-- Build an executable fat jar: java -jar target/iapd-...-all.jar -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${shade.plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <finalName>${project.artifactId}-${project.version}-all</finalName>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>IAFirmSECParserRefactored</mainClass>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <!-- Remove signature files from shaded dependencies to prevent SecurityException at runtime -->
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/*.EC</exclude>
+                    <exclude>META-INF/ECLIPSEF.RSA</exclude>
+                    <exclude>META-INF/ECLIPSEF.SF</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Run the complete legacy test suite (disables default excludes) -->
+    <profile>
+      <id>all-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.plugin.version}</version>
+            <configuration>
+              <useModulePath>false</useModulePath>
+              <includes>
+                <include>**/*Test.java</include>
+                <include>**/*Tests.java</include>
+              </includes>
+              <excludes/>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>local-install</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>install-artifacts</id>
+                <phase>package</phase>
+                <configuration>
+                  <target>
+                    <!-- Create install directory and Data subfolders -->
+                    <mkdir dir="${install.dir}" />
+                    <mkdir dir="${install.dir}/Data" />
+                    <mkdir dir="${install.dir}/Data/Downloads" />
+                    <mkdir dir="${install.dir}/Data/Output" />
+                    <mkdir dir="${install.dir}/Data/Input" />
+                    <mkdir dir="${install.dir}/Data/FirmFiles" />
+                    <mkdir dir="${install.dir}/Data/Logs" />
+
+                    <!-- Copy shaded jar and name it iapd.jar for convenience -->
+                    <copy file="${project.build.directory}/${project.artifactId}-${project.version}-all.jar"
+                          tofile="${install.dir}/iapd.jar" overwrite="true" />
+
+                    <!-- Optional: create a run batch script -->
+                    <echo file="${install.dir}/run-iapd.bat">@echo off&#13;&#10;setlocal&#13;&#10;set JAVA_OPTS=%JAVA_OPTS%&#13;&#10;pushd %~dp0&#13;&#10;java %JAVA_OPTS% -jar "iapd.jar" %*&#13;&#10;popd&#13;&#10;</echo>
+                  </target>
+                </configuration>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+</project>

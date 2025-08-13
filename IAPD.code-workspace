@@ -7,10 +7,7 @@
     "settings": {
         "java.project.sourcePaths": ["src"],
         "java.project.outputPath": "bin",
-        "java.project.referencedLibraries": [
-            "C:/Users/stoctom/OneDrive - ISS/Work/lib/commons-csv-1.10.0.jar",
-            "C:/Users/stoctom/OneDrive - ISS/Work/lib/tika-app-1.14.jar"
-        ],
+    "java.project.referencedLibraries": [],
         "java.compile.nullAnalysis.mode": "automatic",
         "java.configuration.updateBuildConfiguration": "interactive",
         "java.debug.settings.onBuildFailureProceed": true,

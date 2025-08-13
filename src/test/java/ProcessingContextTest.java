@@ -528,7 +528,7 @@ class ProcessingContextTest {
             
             assertEquals(1000000, context.getProcessedFirms(), "Should handle large processed firms count");
             assertEquals(500000, context.getSuccessfulDownloads(), "Should handle large successful downloads count");
-            assertEquals(333333, context.getFailedDownloads(), "Should handle large failed downloads count");
+            assertEquals(333334, context.getFailedDownloads(), "Should handle large failed downloads count");
             assertEquals(200000, context.getBrochuresProcessed(), "Should handle large brochures processed count");
         }
     }

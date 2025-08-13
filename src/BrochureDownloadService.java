@@ -67,6 +67,7 @@ public class BrochureDownloadService {
             writer.write(Config.FIRM_HEADER + ",DownloadStatus" + System.lineSeparator());
             
             int processedCount = 0;
+            RateLimiter limiter = RateLimiter.perSecond(context.getDownloadRatePerSecond());
             for (CSVRecord csvRecord : records) {
                 String downloadStatus = downloadSingleBrochure(csvRecord, context);
                 writeFirmRecordWithDownloadStatus(writer, csvRecord, downloadStatus);
@@ -80,7 +81,7 @@ public class BrochureDownloadService {
                 }
                 
                 // Rate limiting
-                Thread.sleep(1000);
+                limiter.acquire();
             }
             
             ProcessingLogger.logInfo("Brochure download completed. Processed " + processedCount + " records.");
@@ -131,6 +132,7 @@ public class BrochureDownloadService {
             
             int processedCount = 0;
             int skippedCount = 0;
+            RateLimiter limiter = RateLimiter.perSecond(context.getDownloadRatePerSecond());
             
             for (CSVRecord csvRecord : records) {
                 String firmCrdNb = csvRecord.get("FirmCrdNb");
@@ -158,7 +160,7 @@ public class BrochureDownloadService {
                 
                 // Rate limiting (only for actual downloads)
                 if (existingDownloadStatus == null || resumeManager.shouldRetryDownload(existingDownloadStatus)) {
-                    Thread.sleep(1000);
+                    limiter.acquire();
                 }
             }
             
@@ -312,7 +314,7 @@ public class BrochureDownloadService {
                     .build()
                     .parse(reader);
             
-            for (CSVRecord record : records) {
+            for (@SuppressWarnings("unused") CSVRecord ignored : records) {
                 count++;
             }
         } catch (Exception e) {

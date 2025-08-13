@@ -14,6 +14,10 @@ import java.util.Map;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
+
 /**
  * Service class responsible for XML processing operations
  */
@@ -21,6 +25,10 @@ public class XMLProcessingService {
 
     public XMLProcessingService() {
       
+    }
+    // Rate limiter is created per run based on context settings
+    private RateLimiter xmlRateLimiter(ProcessingContext context) {
+        return RateLimiter.perSecond(context.getXmlRatePerSecond());
     }
     
     /**
@@ -55,10 +63,18 @@ public class XMLProcessingService {
         String outputFileName = constructOutputFileName(xmlFile.getName());
         Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
-        try (OutputStreamWriter firmWriter = new OutputStreamWriter(
-                new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8)) {
-            firmWriter.write(Config.FIRM_HEADER + System.lineSeparator());
-            parseXML(xmlFile, firmWriter, context);
+        try (OutputStreamWriter osw = new OutputStreamWriter(
+                new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8);
+             CSVPrinter printer = new CSVPrinter(osw, CSVFormat.EXCEL
+                     .builder()
+                     .setQuoteMode(QuoteMode.MINIMAL)
+                     .setRecordSeparator(System.lineSeparator())
+                     .build())) {
+            // Write header
+            String[] headers = Config.FIRM_HEADER.split(",");
+            printer.printRecord((Object[]) headers);
+            
+            parseXML(xmlFile, printer, context);
             
             ProcessingLogger.logInfo("XML processing completed for file: " + xmlFile.getName());
             ProcessingLogger.printProcessingSummary();
@@ -108,13 +124,20 @@ public class XMLProcessingService {
             String incrementalFileName = incrementalManager.generateIncrementalFileName(baseFileName, dateString, ".csv");
             Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, incrementalFileName);
             
-            // Write filtered firms to output file
-            try (OutputStreamWriter firmWriter = new OutputStreamWriter(
-                    new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8)) {
-                firmWriter.write(Config.FIRM_HEADER + System.lineSeparator());
-                
+            // Write filtered firms to output file using Commons CSV
+            try (OutputStreamWriter osw = new OutputStreamWriter(
+                    new FileOutputStream(outputFilePath.toFile(), false), StandardCharsets.UTF_8);
+                 CSVPrinter printer = new CSVPrinter(osw, CSVFormat.EXCEL
+                         .builder()
+                         .setQuoteMode(QuoteMode.MINIMAL)
+                         .setRecordSeparator(System.lineSeparator())
+                         .build())) {
+                // Header
+                String[] headers = Config.FIRM_HEADER.split(",");
+                printer.printRecord((Object[]) headers);
+
                 for (FirmData firm : firmsToProcess) {
-                    writeFirmRecord(firmWriter, firm);
+                    writeFirmRecord(printer, firm);
                 }
             }
             
@@ -167,7 +190,7 @@ public class XMLProcessingService {
      * @param firmWriter the writer to output firm data
      * @param context processing context containing configuration and runtime state
      */
-    private void parseXML(File xmlFile, OutputStreamWriter firmWriter, ProcessingContext context) throws Exception {
+    private void parseXML(File xmlFile, CSVPrinter printer, ProcessingContext context) throws Exception {
         try (InputStream in = new FileInputStream(xmlFile)) {
             ProcessingLogger.logInfo("Processing: " + xmlFile.getCanonicalPath());
             ProcessingLogger.logInfo("Index limit set to: " + (context.getIndexLimit() == Integer.MAX_VALUE ? "unlimited" : context.getIndexLimit()));
@@ -175,12 +198,13 @@ public class XMLProcessingService {
             XMLInputFactory factory = XMLInputFactory.newInstance();
             XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
             
-            while (reader.hasNext() && !context.hasReachedIndexLimit()) {
+        RateLimiter limiter = xmlRateLimiter(context);
+        while (reader.hasNext() && !context.hasReachedIndexLimit()) {
                 reader.next();
                 if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
                     "Firm".equals(reader.getLocalName())) {
                     
-                    if (!processNextFirm(reader, firmWriter, context)) {
+                    if (!processNextFirm(reader, printer, context, limiter)) {
                         break;
                     }
                     
@@ -200,7 +224,7 @@ public class XMLProcessingService {
     /**
      * Processes a single firm record from the XML
      */
-    private boolean processNextFirm(XMLStreamReader reader, OutputStreamWriter firmWriter, ProcessingContext context) throws Exception {
+    private boolean processNextFirm(XMLStreamReader reader, CSVPrinter printer, ProcessingContext context, RateLimiter limiter) throws Exception {
         FirmDataBuilder firmBuilder = new FirmDataBuilder();
         
         while (reader.hasNext()) {
@@ -238,9 +262,10 @@ public class XMLProcessingService {
                 String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb(), context);
                 firmBuilder.setBrochureURL(brochureURL);
                 
-                writeFirmRecord(firmWriter, firmBuilder.build());
+                writeFirmRecord(printer, firmBuilder.build());
                 
-                Thread.sleep(1000); // Rate limiting
+                // Rate limiting
+                limiter.acquire();
                 return true;
             }
             reader.next();
@@ -299,34 +324,32 @@ public class XMLProcessingService {
     /**
      * Writes a complete firm record to CSV
      */
-    private void writeFirmRecord(OutputStreamWriter writer, FirmData firmData) throws Exception {
-        writer.write(Config.getCurrentDateString() + ",");
-        writer.write(firmData.getSECRgnCD() + ",");
-        writer.write(firmData.getFirmCrdNb() + ",");
-        writer.write(firmData.getSECNb() + ",");
-        writer.write('"' + sanitizeValue(firmData.getBusNm()) + '"' + ",");
-        writer.write('"' + sanitizeValue(firmData.getLegalNm()) + '"' + ",");
-        writer.write('"' + sanitizeValue(firmData.getStreet1()) + '"' + ",");
-        writer.write('"' + sanitizeValue(firmData.getStreet2()) + '"' + ",");
-        writer.write('"' + sanitizeValue(firmData.getCity()) + '"' + ",");
-        writer.write(firmData.getState() + ",");
-        writer.write(firmData.getCountry() + ",");
-        writer.write(firmData.getPostalCode() + ",");
-        writer.write(firmData.getPhoneNumber() + ",");
-        writer.write(firmData.getFaxNumber() + ",");
-        writer.write(firmData.getFirmType() + ",");
-        writer.write(firmData.getRegistrationState() + ",");
-        writer.write(firmData.getRegistrationDate() + ",");
-        writer.write(firmData.getFilingDate() + ",");
-        writer.write(firmData.getFormVersion() + ",");
-        writer.write(firmData.getTotalEmployees() + ",");
-        writer.write(firmData.getAUM() + ",");
-        writer.write(firmData.getTotalAccounts() + ",");
-        
-        if (firmData.getBrochureURL() != null) {
-            writer.write(firmData.getBrochureURL());
-        }
-        writer.write(System.lineSeparator());
+    private void writeFirmRecord(CSVPrinter printer, FirmData firmData) throws Exception {
+        printer.printRecord(
+            Config.getCurrentDateString(),
+            firmData.getSECRgnCD(),
+            firmData.getFirmCrdNb(),
+            firmData.getSECNb(),
+            sanitizeValue(firmData.getBusNm()),
+            sanitizeValue(firmData.getLegalNm()),
+            sanitizeValue(firmData.getStreet1()),
+            sanitizeValue(firmData.getStreet2()),
+            sanitizeValue(firmData.getCity()),
+            firmData.getState(),
+            firmData.getCountry(),
+            firmData.getPostalCode(),
+            firmData.getPhoneNumber(),
+            firmData.getFaxNumber(),
+            firmData.getFirmType(),
+            firmData.getRegistrationState(),
+            firmData.getRegistrationDate(),
+            firmData.getFilingDate(),
+            firmData.getFormVersion(),
+            firmData.getTotalEmployees(),
+            firmData.getAUM(),
+            firmData.getTotalAccounts(),
+            firmData.getBrochureURL() != null ? firmData.getBrochureURL() : ""
+        );
     }
     
     /**

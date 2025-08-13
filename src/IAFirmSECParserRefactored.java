@@ -18,6 +18,7 @@ public class IAFirmSECParserRefactored {
     private final ConfigurationManager configurationManager;
     private final IncrementalUpdateManager incrementalUpdateManager;
     private final ResumeStateManager resumeStateManager;
+    private final MonthlyDownloadService monthlyDownloadService;
     
     public IAFirmSECParserRefactored() {
         // Initialize services with dependency injection
@@ -27,6 +28,7 @@ public class IAFirmSECParserRefactored {
         this.configurationManager = new ConfigurationManager();
         this.incrementalUpdateManager = new IncrementalUpdateManager();
         this.resumeStateManager = new ResumeStateManager();
+        this.monthlyDownloadService = new MonthlyDownloadService(fileDownloadService);
         
         BrochureAnalyzer brochureAnalyzer = new BrochureAnalyzer();
         CSVWriterService csvWriterService = new CSVWriterService();
@@ -131,20 +133,37 @@ public class IAFirmSECParserRefactored {
         try {
             _setUpDirectories();
             
-            // Step 1: Download XML and extract firm data with brochure URLs
-            Path firmDataFile = downloadAndParseXMLData(context);
-            if (firmDataFile == null) {
-                return; // Error already logged
+            // Check if monthly mode is enabled
+            if (context.getMonthName() != null && (context.isIncrementalUpdates() || 
+                context.isIncrementalDownloads() || context.isIncrementalProcessing())) {
+                
+                // Monthly mode: Download and extract monthly brochure data
+                Path monthlyDataPath = monthlyDownloadService.downloadAndExtractMonthlyData(context.getMonthName(), context);
+                if (monthlyDataPath == null) {
+                    return; // Error already logged
+                }
+                
+                // Process the monthly brochure data directly
+                processMonthlyBrochures(monthlyDataPath, context);
+                
+            } else {
+                // Standard mode: Three-step processing
+                
+                // Step 1: Download XML and extract firm data with brochure URLs
+                Path firmDataFile = downloadAndParseXMLData(context);
+                if (firmDataFile == null) {
+                    return; // Error already logged
+                }
+                
+                // Step 2: Download brochure PDF files
+                Path firmDataWithDownloads = downloadBrochures(firmDataFile, context);
+                if (firmDataWithDownloads == null) {
+                    return; // Error already logged
+                }
+                
+                // Step 3: Process and analyze brochures
+                processBrochures(firmDataWithDownloads, context);
             }
-            
-            // Step 2: Download brochure PDF files
-            Path firmDataWithDownloads = downloadBrochures(firmDataFile, context);
-            if (firmDataWithDownloads == null) {
-                return; // Error already logged
-            }
-            
-            // Step 3: Process and analyze brochures
-            processBrochures(firmDataWithDownloads, context);
             
         } catch (Exception e) {
             context.setLastError("Error in IAPD data processing: " + e.getMessage());
@@ -258,6 +277,32 @@ public class IAFirmSECParserRefactored {
             context.setLastError("Error in brochure processing step: " + e.getMessage());
             context.setCurrentPhase(ProcessingPhase.ERROR);
             System.err.println("Error in brochure processing step: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Processes monthly brochure data that has been downloaded and extracted
+     * @param monthlyDataPath path to the extracted monthly data directory
+     * @param context processing context
+     */
+    private void processMonthlyBrochures(Path monthlyDataPath, ProcessingContext context) {
+        try {
+            context.setCurrentPhase(ProcessingPhase.PROCESSING_BROCHURES);
+            ProcessingLogger.logInfo("=== MONTHLY BROCHURE PROCESSING ===");
+            ProcessingLogger.logInfo("Processing monthly brochure data from: " + monthlyDataPath);
+            ProcessingLogger.logInfo("Monthly brochure files are now available in: " + monthlyDataPath);
+            ProcessingLogger.logInfo("You can now process the brochure files from the extracted directory.");
+            
+            // For now, we'll just log the completion since the monthly data has been downloaded and extracted
+            // The user can then process the brochures from the monthly directory as needed
+            ProcessingLogger.logInfo("Monthly download and extraction completed successfully.");
+            ProcessingLogger.logInfo("Brochure files are available for processing in: " + monthlyDataPath);
+            
+        } catch (Exception e) {
+            context.setLastError("Error in monthly brochure processing: " + e.getMessage());
+            context.setCurrentPhase(ProcessingPhase.ERROR);
+            System.err.println("Error in monthly brochure processing: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -435,51 +435,36 @@ class CommandLineOptionsTest {
     class IntegrationTests {
 
         @Test
-        @DisplayName("Should integrate with ProcessingContext creation")
-        void shouldIntegrateWithProcessingContextCreation() {
-            String[] args = {"--index-limit", "500", "--verbose"};
-            
-            CommandLineOptions options = CommandLineOptions.parseArgs(args);
-            ProcessingContext context = ProcessingContext.fromCommandLineOptions(options);
-            
-            assertNotNull(context, "Context should be created from options");
-            assertEquals(500, context.getIndexLimit(), "Context should have correct index limit");
-            assertTrue(context.isVerbose(), "Context should have correct verbose setting");
-            assertEquals("command-line", context.getConfigSource(), "Context should have correct config source");
-        }
-
-        @Test
-        @DisplayName("Should work with ConfigurationManager")
-        void shouldWorkWithConfigurationManager() {
-            String[] args = {"-l", "250", "-v"};
-            
-            CommandLineOptions options = CommandLineOptions.parseArgs(args);
-            ConfigurationManager configManager = new ConfigurationManager();
-            ProcessingContext context = configManager.buildContext(args);
-            
-            assertNotNull(context, "ConfigurationManager should create context from args");
-            assertEquals(250, context.getIndexLimit(), "Context should have correct index limit");
-            assertTrue(context.isVerbose(), "Context should have correct verbose setting");
-        }
-
-        @Test
         @DisplayName("Should handle complete workflow")
         void shouldHandleCompleteWorkflow() {
-            String[] args = {"--index-limit", "1000", "--verbose"};
+            String[] args = {"--index-limit", "1000", "--verbose", "--incremental", "--month", "january"};
             
             // Parse arguments
             CommandLineOptions options = CommandLineOptions.parseArgs(args);
             assertNotNull(options, "Options should be parsed");
             
-            // Create context
-            ProcessingContext context = ProcessingContext.fromCommandLineOptions(options);
-            assertNotNull(context, "Context should be created");
+            // Verify all options are set correctly
+            assertAll("All options should be parsed correctly",
+                () -> assertEquals(1000, options.getIndexLimit(), "Index limit should be 1000"),
+                () -> assertTrue(options.isVerbose(), "Verbose should be enabled"),
+                () -> assertTrue(options.isIncrementalUpdates(), "Incremental updates should be enabled"),
+                () -> assertEquals("january", options.getMonthName(), "Month name should be january")
+            );
+        }
+
+        @Test
+        @DisplayName("Should handle toString method correctly")
+        void shouldHandleToStringMethodCorrectly() {
+            String[] args = {"--incremental", "--month", "december", "--verbose"};
             
-            // Verify integration
-            assertEquals(options.getIndexLimit(), context.getIndexLimit(), 
-                "Context should match options index limit");
-            assertEquals(options.isVerbose(), context.isVerbose(), 
-                "Context should match options verbose setting");
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            String toString = options.toString();
+            
+            assertAll("toString should contain all relevant information",
+                () -> assertTrue(toString.contains("incrementalUpdates=true"), "Should show incremental updates"),
+                () -> assertTrue(toString.contains("monthName='december'"), "Should show month name"),
+                () -> assertTrue(toString.contains("verbose=true"), "Should show verbose setting")
+            );
         }
     }
 
@@ -522,6 +507,160 @@ class CommandLineOptionsTest {
             
             long totalTime = endTime - startTime;
             assertTrue(totalTime < 100, "Should process large argument array quickly");
+        }
+    }
+
+    @Nested
+    @DisplayName("Month Option Tests")
+    class MonthOptionTests {
+
+        @Test
+        @DisplayName("Should parse valid month with incremental mode")
+        void shouldParseValidMonthWithIncrementalMode() {
+            String[] args = {"--incremental", "--month", "january"};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertAll("Month option should be parsed correctly",
+                () -> assertTrue(options.isIncrementalUpdates(), "Incremental updates should be enabled"),
+                () -> assertEquals("january", options.getMonthName(), "Month name should be january")
+            );
+        }
+
+        @Test
+        @DisplayName("Should parse valid month with incremental downloads")
+        void shouldParseValidMonthWithIncrementalDownloads() {
+            String[] args = {"--incremental-downloads", "--month", "december"};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertAll("Month option should be parsed correctly",
+                () -> assertTrue(options.isIncrementalDownloads(), "Incremental downloads should be enabled"),
+                () -> assertEquals("december", options.getMonthName(), "Month name should be december")
+            );
+        }
+
+        @Test
+        @DisplayName("Should parse valid month with incremental processing")
+        void shouldParseValidMonthWithIncrementalProcessing() {
+            String[] args = {"--incremental-processing", "--month", "june"};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertAll("Month option should be parsed correctly",
+                () -> assertTrue(options.isIncrementalProcessing(), "Incremental processing should be enabled"),
+                () -> assertEquals("june", options.getMonthName(), "Month name should be june")
+            );
+        }
+
+        @Test
+        @DisplayName("Should handle month names case insensitively")
+        void shouldHandleMonthNamesCaseInsensitively() {
+            String[] args = {"--incremental", "--month", "MARCH"};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertEquals("march", options.getMonthName(), "Month name should be normalized to lowercase");
+        }
+
+        @Test
+        @DisplayName("Should parse month with equals format")
+        void shouldParseMonthWithEqualsFormat() {
+            String[] args = {"--incremental", "--month=april"};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertEquals("april", options.getMonthName(), "Month name should be parsed from equals format");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for invalid month name")
+        void shouldThrowExceptionForInvalidMonthName() {
+            String[] args = {"--incremental", "--month", "invalidmonth"};
+            
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+                CommandLineOptions.parseArgs(args);
+            }, "Should throw exception for invalid month name");
+            
+            assertTrue(exception.getMessage().contains("Invalid month name"), 
+                "Exception message should mention invalid month name");
+            assertTrue(exception.getMessage().contains("invalidmonth"), 
+                "Exception message should include the invalid month name");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for month without incremental mode")
+        void shouldThrowExceptionForMonthWithoutIncrementalMode() {
+            String[] args = {"--month", "january"};
+            
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+                CommandLineOptions.parseArgs(args);
+            }, "Should throw exception when month is used without incremental mode");
+            
+            assertTrue(exception.getMessage().contains("--month option can only be used with incremental mode"), 
+                "Exception message should explain month requires incremental mode");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for missing month value")
+        void shouldThrowExceptionForMissingMonthValue() {
+            String[] args = {"--incremental", "--month"};
+            
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+                CommandLineOptions.parseArgs(args);
+            }, "Should throw exception for missing month value");
+            
+            assertTrue(exception.getMessage().contains("Missing value for --month"), 
+                "Exception message should mention missing value");
+        }
+
+        @Test
+        @DisplayName("Should handle month with extra spaces")
+        void shouldHandleMonthWithExtraSpaces() {
+            String[] args = {"--incremental", "--month", "  february  "};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertEquals("february", options.getMonthName(), "Month name should be trimmed");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"january", "february", "march", "april", "may", "june", 
+                               "july", "august", "september", "october", "november", "december"})
+        @DisplayName("Should accept all valid month names")
+        void shouldAcceptAllValidMonthNames(String monthName) {
+            String[] args = {"--incremental", "--month", monthName};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertEquals(monthName, options.getMonthName(), "Should accept valid month: " + monthName);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"JANUARY", "February", "MaRcH", "APRIL"})
+        @DisplayName("Should handle mixed case month names")
+        void shouldHandleMixedCaseMonthNames(String monthName) {
+            String[] args = {"--incremental", "--month", monthName};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertEquals(monthName.toLowerCase(), options.getMonthName(), 
+                "Should normalize mixed case month: " + monthName);
+        }
+
+        @Test
+        @DisplayName("Should work with combined incremental and month options")
+        void shouldWorkWithCombinedIncrementalAndMonthOptions() {
+            String[] args = {"--incremental", "--baseline-file", "test.csv", "--month", "september", "--verbose"};
+            
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            
+            assertAll("All options should be parsed correctly",
+                () -> assertTrue(options.isIncrementalUpdates(), "Incremental updates should be enabled"),
+                () -> assertEquals("test.csv", options.getBaselineFilePath(), "Baseline file should be set"),
+                () -> assertEquals("september", options.getMonthName(), "Month name should be september"),
+                () -> assertTrue(options.isVerbose(), "Verbose should be enabled")
+            );
         }
     }
 

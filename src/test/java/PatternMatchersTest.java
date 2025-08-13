@@ -285,7 +285,8 @@ public class PatternMatchersTest {
         void testInvalidEmailAddresses(String invalidEmail) {
             Pattern pattern = PatternMatchers.EMAIL_PATTERN;
             Matcher matcher = pattern.matcher("Contact us at " + invalidEmail + " for more info");
-            
+            boolean found = matcher.find();
+            System.out.println("TEST invalidEmail='" + invalidEmail + "' find? " + found);
             assertFalse(matcher.find());
         }
         
@@ -293,10 +294,17 @@ public class PatternMatchersTest {
         @DisplayName("Should match email sentences with compliance keywords")
         void testEmailComplianceSentencePattern() {
             Pattern pattern = PatternMatchers.EMAIL_COMPLIANCE_SENTENCE_PATTERN;
+            System.out.println("TEST: EMAIL_COMPLIANCE_SENTENCE_PATTERN=" + pattern.pattern());
             
-            assertTrue(pattern.matcher("For compliance matters, contact compliance@firm.com").find());
-            assertTrue(pattern.matcher("Compliance questions should be sent to info@company.org").find());
-            assertTrue(pattern.matcher("Contact compliance@test.net for regulatory issues").find());
+            String s1 = "For compliance matters, contact compliance@firm.com";
+            System.out.println("TEST s1 find? " + pattern.matcher(s1).find());
+            assertTrue(pattern.matcher(s1).find());
+            String s2 = "Compliance questions should be sent to info@company.org";
+            System.out.println("TEST s2 find? " + pattern.matcher(s2).find());
+            assertTrue(pattern.matcher(s2).find());
+            String s3 = "Contact compliance@test.net for regulatory issues";
+            System.out.println("TEST s3 find? " + pattern.matcher(s3).find());
+            assertTrue(pattern.matcher(s3).find());
             
             assertFalse(pattern.matcher("General inquiries: info@firm.com").find()); // No compliance keyword
             assertFalse(pattern.matcher("Compliance department handles these matters").find()); // No email
@@ -306,8 +314,11 @@ public class PatternMatchersTest {
         @DisplayName("Should match email sentences with proxy keywords")
         void testEmailProxySentencePattern() {
             Pattern pattern = PatternMatchers.EMAIL_PROXY_SENTENCE_PATTERN;
+            System.out.println("TEST: EMAIL_PROXY_SENTENCE_PATTERN=" + pattern.pattern());
             
-            assertTrue(pattern.matcher("Proxy voting questions: proxy@firm.com").find());
+            String p1 = "Proxy voting questions: proxy@firm.com";
+            System.out.println("TEST proxy p1 find? " + pattern.matcher(p1).find());
+            assertTrue(pattern.matcher(p1).find());
             assertTrue(pattern.matcher("For proxy matters, email voting@company.org").find());
             assertTrue(pattern.matcher("Contact proxy@test.net for voting information").find());
             
@@ -319,8 +330,11 @@ public class PatternMatchersTest {
         @DisplayName("Should match email sentences with brochure keywords")
         void testEmailBrochureSentencePattern() {
             Pattern pattern = PatternMatchers.EMAIL_BROCHURE_SENTENCE_PATTERN;
+            System.out.println("TEST: EMAIL_BROCHURE_SENTENCE_PATTERN=" + pattern.pattern());
             
-            assertTrue(pattern.matcher("To request our brochure, email brochure@firm.com").find());
+            String b1 = "To request our brochure, email brochure@firm.com";
+            System.out.println("TEST brochure b1 find? " + pattern.matcher(b1).find());
+            assertTrue(pattern.matcher(b1).find());
             assertTrue(pattern.matcher("Questions about our services: info@company.org").find());
             assertTrue(pattern.matcher("Contact brochure@test.net for more information").find());
             
@@ -472,13 +486,18 @@ public class PatternMatchersTest {
         @DisplayName("Should not be instantiable")
         void testNotInstantiable() {
             // PatternMatchers should be a utility class with private constructor
-            assertThrows(UnsupportedOperationException.class, () -> {
-                // Use reflection to try to instantiate
-                java.lang.reflect.Constructor<PatternMatchers> constructor = 
-                        PatternMatchers.class.getDeclaredConstructor();
-                constructor.setAccessible(true);
+            java.lang.reflect.Constructor<PatternMatchers> constructor;
+            try {
+                constructor = PatternMatchers.class.getDeclaredConstructor();
+            } catch (NoSuchMethodException e) {
+                fail("Expected default constructor to exist");
+                return;
+            }
+            constructor.setAccessible(true);
+            java.lang.reflect.InvocationTargetException ex = assertThrows(java.lang.reflect.InvocationTargetException.class, () -> {
                 constructor.newInstance();
             });
+            assertTrue(ex.getCause() instanceof UnsupportedOperationException);
         }
     }
 }

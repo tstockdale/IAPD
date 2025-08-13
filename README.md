@@ -81,11 +81,33 @@ IAPD/
 
 ## Dependencies
 
-The project requires the following external JAR files:
-- `commons-csv-1.10.0.jar` - Apache Commons CSV library
-- `tika-app-1.14.jar` - Apache Tika for PDF parsing
-- `log4j-core-2.x.x.jar` - Apache Log4j for logging
-- `log4j-api-2.x.x.jar` - Apache Log4j API
+Dependencies are managed by Maven. Key libraries include:
+- Apache Commons CSV (1.10.0)
+- Apache Tika 2.x (core + standard parsers package)
+- Log4j 2 (API, Core, and SLF4J binding)
+
+No manual JAR downloads are required; Maven resolves them automatically.
+
+## Installation
+
+To install the shaded JAR and helper script to C:\\Users\\stoctom\\Work\\IAPD:
+
+1. Build and install:
+	- From VS Code: Run the "install" task
+	- Or via terminal:
+	```powershell
+	mvn -P local-install -DskipTests package
+	```
+2. Run from install folder:
+	```powershell
+	cd C:\Users\stoctom\Work\IAPD
+	.\run-iapd.bat --help
+	```
+
+Artifacts created:
+- iapd.jar (shaded)
+- run-iapd.bat
+- Data/ folder structure (Downloads, Output, Input, FirmFiles, Logs)
 
 ## Features
 
@@ -109,23 +131,26 @@ The project requires the following external JAR files:
 
 ### Basic Usage
 ```bash
+# Build a runnable fat JAR
+mvn -DskipTests package
+
 # Run with default settings (no limit)
-java IAFirmSECParserRefactored
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar
 
 # Set index limit for processing
-java IAFirmSECParserRefactored --index-limit 1000
-java IAFirmSECParserRefactored -l 500
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --index-limit 1000
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -l 500
 
 # Enable verbose logging
-java IAFirmSECParserRefactored --verbose
-java IAFirmSECParserRefactored -v
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --verbose
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -v
 
 # Combine options
-java IAFirmSECParserRefactored --index-limit 100 --verbose
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --index-limit 100 --verbose
 
 # Show help
-java IAFirmSECParserRefactored --help
-java IAFirmSECParserRefactored -h
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --help
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -h
 ```
 
 ### Resume Capability Usage
@@ -178,6 +203,9 @@ verbose=true
 output.format=CSV
 retry.count=3
 skip.brochure.download=false
+# Rate limits (operations per second)
+rate.limit.xml.per.second=1
+rate.limit.download.per.second=1
 ```
 
 ## Three-Step Processing Flow

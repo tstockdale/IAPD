@@ -6,8 +6,11 @@ import java.util.regex.Pattern;
  */
 public final class PatternMatchers {
     
-    // Common email pattern component
-    private static final String EMAIL_PATTERN_BASE = "[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}";
+    // Common email pattern component (no spaces, no consecutive dots in local/domain, Unicode letters/numbers)
+    // local: labels separated by single dots, allowed chars [_%+\-]
+    // domain: labels separated by single dots, final TLD at least 2 letters
+    private static final String EMAIL_PATTERN_BASE =
+        "(?:[\\p{L}\\p{N}_%+\\-]+(?:\\.[\\p{L}\\p{N}_%+\\-]+)*)@(?:[\\p{L}\\p{N}\\-]+(?:\\.[\\p{L}\\p{N}\\-]+)+)";
     
     // Helper method to create class action patterns
     private static String createClassActionPattern(String company) {
@@ -16,7 +19,8 @@ public final class PatternMatchers {
     
     // Helper method to create email sentence patterns
     private static String createEmailSentencePattern(String keyword) {
-        return String.format("([^.]*?%s[^.]*?%s[^.]*?)", keyword, EMAIL_PATTERN_BASE);
+        // Allow any characters between keyword and email within a line; reuse EMAIL_MATCHER
+        return String.format(".*?%s.*?%s", keyword, EMAIL_MATCHER);
     }
     
     // Simplified regex patterns for various providers and services
@@ -36,12 +40,12 @@ public final class PatternMatchers {
     public static final String THIRD_PARTY_PROXY_MATCHER = "(?:proxy[^.]*?third[\\s-]party|third[\\s-]party[^.]*?proxy)";
     public static final String ISS_CLASS_ACTION_MATCHER = createClassActionPattern("(?:ISS|Institutional Shareholder Services)");
     public static final String EMAIL_SENTENCE_MATCHER = "Item 17.{1,500}(.{10}\\.[^.]*?" + EMAIL_PATTERN_BASE + "[^.]*?\\.).{1,500}Item 18";
-    public static final String EMAIL_COMPLIANCE_SENTENCE_MATCHER = createEmailSentencePattern("compliance");
-    public static final String EMAIL_PROXY_SENTENCE_MATCHER = createEmailSentencePattern("proxy");
-    public static final String EMAIL_BROCHURE_SENTENCE_MATCHER = createEmailSentencePattern("(?:brochure|question)");
-    public static final String EMAIL_MATCHER = ".(" + EMAIL_PATTERN_BASE + ")";
+    public static final String EMAIL_COMPLIANCE_SENTENCE_MATCHER = "(?:(.{10}\\.[^.]{1,300}[Cc]ompliance[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}\\.)|(.{10}\\.[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}[Cc]ompliance[^.]{1,300}\\.))";
+    public static final String EMAIL_PROXY_SENTENCE_MATCHER = "(?:(.{10}\\.[^.]{1,300}[Pp]roxy[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}\\.)|(.{10}\\.[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}[Pp]roxy[^.]{1,300}\\.))";
+    public static final String EMAIL_BROCHURE_SENTENCE_MATCHER = "(?:(.{10}\\.[^.]{1,300}(?:[Bb]rochure|[Qq]uestion)[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}\\.)|(.{10}\\.[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}(?:[Bb]rochure|[Qq]uestion)[^.]{1,300}\\.))";
+    public static final String EMAIL_MATCHER = "(" + EMAIL_PATTERN_BASE + ")";
     public static final String NO_VOTE_MATCHER = "(?:abstain|not vote|do not vote|will not vote|may not vote)";
-    public static final String CUSTODIAL_SERVICES_MATCHER = ".{1,200}ustodial.{1,30}services.{1,200}";
+    public static final String CUSTODIAL_SERVICES_MATCHER = ".{0,200}ustodial.{0,30}services.{0,200}";
     public static final String API_BRCHR_VERSION_ID_MATCHER = "brochureVersionID..: (\\d+),";
     public static final String BRCHR_VERSION_ID_MATCHER = "BRCHR_VRSN_ID=(\\d+)";
     

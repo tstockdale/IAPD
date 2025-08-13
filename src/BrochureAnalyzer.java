@@ -35,11 +35,12 @@ public class BrochureAnalyzer {
         ProcessingLogger.logProviderMatch("Analyzing brochure for Firm CRD#: " + firmCrdNb);
         // Handle null input gracefully
         if (text == null) {
-            return analysis;
+            return analysis;           
         }
         
         // Apply all analysis strategies
         for (AnalysisStrategy strategy : strategies) {
+        	ProcessingLogger.logProviderMatch("Executing strategy: " + strategy.toString());
             strategy.analyze(text, analysis);
         }
         
@@ -119,6 +120,7 @@ public class BrochureAnalyzer {
         }
         
         private void extractEmailSentence(Pattern pattern, String text, StringBuilder result) {
+        	ProcessingLogger.logProviderMatch("Executing email pattern: " + pattern.pattern());
             Matcher matcher = pattern.matcher(text);
             if (matcher.find()) {
                 if (matcher.group(1) != null) {

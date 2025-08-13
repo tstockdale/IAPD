@@ -22,8 +22,12 @@ public class ProcessingContext {
     private final boolean incrementalDownloads;
     private final boolean incrementalProcessing;
     private final String baselineFilePath;
+    private final String monthName;
     private final String configSource;
     private final LocalDateTime createdAt;
+    // Rate limiting configuration
+    private final int xmlRatePerSecond;
+    private final int downloadRatePerSecond;
     
     // Runtime State (mutable, thread-safe)
     private final AtomicInteger processedFirms = new AtomicInteger(0);
@@ -50,9 +54,12 @@ public class ProcessingContext {
         this.incrementalDownloads = builder.incrementalDownloads;
         this.incrementalProcessing = builder.incrementalProcessing;
         this.baselineFilePath = builder.baselineFilePath;
+        this.monthName = builder.monthName;
         this.configSource = builder.configSource;
         this.createdAt = LocalDateTime.now();
         this.processingStartTime.set(System.currentTimeMillis());
+    this.xmlRatePerSecond = builder.xmlRatePerSecond;
+    this.downloadRatePerSecond = builder.downloadRatePerSecond;
     }
     
     // Configuration getters
@@ -69,8 +76,11 @@ public class ProcessingContext {
     public boolean isIncrementalDownloads() { return incrementalDownloads; }
     public boolean isIncrementalProcessing() { return incrementalProcessing; }
     public String getBaselineFilePath() { return baselineFilePath; }
+    public String getMonthName() { return monthName; }
     public String getConfigSource() { return configSource; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public int getXmlRatePerSecond() { return xmlRatePerSecond; }
+    public int getDownloadRatePerSecond() { return downloadRatePerSecond; }
     
     // Runtime state getters
     public int getProcessedFirms() { return processedFirms.get(); }
@@ -157,13 +167,18 @@ public class ProcessingContext {
         private boolean incrementalDownloads = false;
         private boolean incrementalProcessing = false;
         private String baselineFilePath = null;
-        private String configSource = "default";
+        private String monthName = null;
+        private String configSource = "builder";
+    private int xmlRatePerSecond = 1;
+    private int downloadRatePerSecond = 1;
         
         public Builder indexLimit(int indexLimit) {
+            // Treat non-positive values as "unlimited"
             if (indexLimit <= 0) {
-                throw new IllegalArgumentException("Index limit must be positive");
+                this.indexLimit = Integer.MAX_VALUE;
+            } else {
+                this.indexLimit = indexLimit;
             }
-            this.indexLimit = indexLimit;
             return this;
         }
         
@@ -233,8 +248,29 @@ public class ProcessingContext {
             return this;
         }
         
+        public Builder monthName(String monthName) {
+            this.monthName = monthName;
+            return this;
+        }
+        
         public Builder configSource(String configSource) {
             this.configSource = configSource != null ? configSource : "unknown";
+            return this;
+        }
+        
+        public Builder xmlRatePerSecond(int rate) {
+            if (rate <= 0) {
+                throw new IllegalArgumentException("xmlRatePerSecond must be > 0");
+            }
+            this.xmlRatePerSecond = rate;
+            return this;
+        }
+        
+        public Builder downloadRatePerSecond(int rate) {
+            if (rate <= 0) {
+                throw new IllegalArgumentException("downloadRatePerSecond must be > 0");
+            }
+            this.downloadRatePerSecond = rate;
             return this;
         }
         
@@ -265,6 +301,10 @@ public class ProcessingContext {
                 .incrementalDownloads(options.isIncrementalDownloads())
                 .incrementalProcessing(options.isIncrementalProcessing())
                 .baselineFilePath(options.getBaselineFilePath())
+                .monthName(options.getMonthName())
+                // If CLI specified rate overrides, apply them; otherwise builder defaults hold
+                .xmlRatePerSecond(options.getXmlRatePerSecond() != null ? options.getXmlRatePerSecond() : 1)
+                .downloadRatePerSecond(options.getDownloadRatePerSecond() != null ? options.getDownloadRatePerSecond() : 1)
                 .configSource("command-line")
                 .build();
     }

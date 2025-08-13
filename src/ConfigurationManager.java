@@ -109,6 +109,24 @@ public class ConfigurationManager {
                 builder.skipBrochureDownload(Boolean.parseBoolean(props.getProperty("skip.brochure.download")));
             }
             
+            // Rate limiting properties
+            if (props.containsKey("rate.limit.xml.per.second")) {
+                try {
+                    int rate = Integer.parseInt(props.getProperty("rate.limit.xml.per.second"));
+                    builder.xmlRatePerSecond(rate);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("Warning: Invalid rate.limit.xml.per.second in config file: " + props.getProperty("rate.limit.xml.per.second"));
+                }
+            }
+            if (props.containsKey("rate.limit.download.per.second")) {
+                try {
+                    int rate = Integer.parseInt(props.getProperty("rate.limit.download.per.second"));
+                    builder.downloadRatePerSecond(rate);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("Warning: Invalid rate.limit.download.per.second in config file: " + props.getProperty("rate.limit.download.per.second"));
+                }
+            }
+            
             builder.configSource("file");
         }
     }
@@ -132,6 +150,14 @@ public class ConfigurationManager {
                    .incrementalProcessing(options.isIncrementalProcessing())
                    .baselineFilePath(options.getBaselineFilePath())
                    .configSource("command-line");
+            
+            // Optional rate overrides
+            if (options.getXmlRatePerSecond() != null) {
+                builder.xmlRatePerSecond(options.getXmlRatePerSecond());
+            }
+            if (options.getDownloadRatePerSecond() != null) {
+                builder.downloadRatePerSecond(options.getDownloadRatePerSecond());
+            }
                    
         } catch (IllegalArgumentException e) {
             // If command line parsing fails, let the exception bubble up
@@ -189,6 +215,12 @@ public class ConfigurationManager {
         props.setProperty("   ", "");
         props.setProperty("# Skip brochure download (default: false)", "");
         props.setProperty("skip.brochure.download", "false");
+    props.setProperty("    ", "");
+    props.setProperty("# Rate limits (operations per second)", "");
+    props.setProperty("# How many firms to parse per second when reading XML", "");
+    props.setProperty("rate.limit.xml.per.second", "1");
+    props.setProperty("# How many brochure downloads per second", "");
+    props.setProperty("rate.limit.download.per.second", "1");
         
         try (java.io.FileOutputStream fos = new java.io.FileOutputStream(filename)) {
             props.store(fos, "IAPD Parser Configuration");
@@ -240,6 +272,8 @@ public class ConfigurationManager {
         System.out.println("Output Format: " + context.getOutputFormat());
         System.out.println("Retry Count: " + context.getRetryCount());
         System.out.println("Skip Brochure Download: " + context.isSkipBrochureDownload());
+    System.out.println("XML Rate (ops/sec): " + context.getXmlRatePerSecond());
+    System.out.println("Download Rate (ops/sec): " + context.getDownloadRatePerSecond());
         System.out.println("Created At: " + context.getCreatedAt());
         System.out.println("===============================");
     }

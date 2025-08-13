@@ -16,6 +16,35 @@ public class CommandLineOptions {
     private boolean incrementalDownloads = false;
     private boolean incrementalProcessing = false;
     private String baselineFilePath = null;
+    private String monthName = null;
+    // Optional overrides for rate limits (null means not provided on CLI)
+    private Integer xmlRatePerSecond = null;
+    private Integer downloadRatePerSecond = null;
+    
+    // Valid month names for validation
+    private static final String[] VALID_MONTHS = {
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december"
+    };
+    
+    /**
+     * Validates if the provided month name is valid
+     * @param monthName the month name to validate (case insensitive)
+     * @return true if valid, false otherwise
+     */
+    private static boolean isValidMonth(String monthName) {
+        if (monthName == null || monthName.trim().isEmpty()) {
+            return false;
+        }
+        
+        String normalizedMonth = monthName.trim().toLowerCase();
+        for (String validMonth : VALID_MONTHS) {
+            if (validMonth.equals(normalizedMonth)) {
+                return true;
+            }
+        }
+        return false;
+    }
     
     /**
      * Parses command line arguments and returns a CommandLineOptions object
@@ -53,6 +82,30 @@ public class CommandLineOptions {
                         continue;
                     } else if ("--baseline-file".equals(key)) {
                         options.baselineFilePath = value;
+                        continue;
+                    } else if ("--month".equals(key)) {
+                        if (!isValidMonth(value)) {
+                            throw new IllegalArgumentException("Invalid month name: " + value + ". Valid months are: january, february, march, april, may, june, july, august, september, october, november, december");
+                        }
+                        options.monthName = value.trim().toLowerCase();
+                        continue;
+                    } else if ("--xml-rate".equals(key)) {
+                        try {
+                            int rate = Integer.parseInt(value);
+                            if (rate <= 0) throw new IllegalArgumentException("--xml-rate must be a positive integer");
+                            options.xmlRatePerSecond = rate;
+                        } catch (NumberFormatException e) {
+                            throw new IllegalArgumentException("Invalid --xml-rate value: " + value);
+                        }
+                        continue;
+                    } else if ("--download-rate".equals(key)) {
+                        try {
+                            int rate = Integer.parseInt(value);
+                            if (rate <= 0) throw new IllegalArgumentException("--download-rate must be a positive integer");
+                            options.downloadRatePerSecond = rate;
+                        } catch (NumberFormatException e) {
+                            throw new IllegalArgumentException("Invalid --download-rate value: " + value);
+                        }
                         continue;
                     } else {
                         throw new IllegalArgumentException("Unknown argument: " + arg);
@@ -135,10 +188,54 @@ public class CommandLineOptions {
                     }
                     options.baselineFilePath = args[++i];
                     break;
+                
+                case "--xml-rate":
+                    if (i + 1 >= args.length) {
+                        throw new IllegalArgumentException("Missing value for " + arg);
+                    }
+                    try {
+                        String value = args[++i].trim();
+                        int rate = Integer.parseInt(value);
+                        if (rate <= 0) throw new IllegalArgumentException("--xml-rate must be a positive integer");
+                        options.xmlRatePerSecond = rate;
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid --xml-rate value: " + args[i].trim());
+                    }
+                    break;
+                
+                case "--download-rate":
+                    if (i + 1 >= args.length) {
+                        throw new IllegalArgumentException("Missing value for " + arg);
+                    }
+                    try {
+                        String value = args[++i].trim();
+                        int rate = Integer.parseInt(value);
+                        if (rate <= 0) throw new IllegalArgumentException("--download-rate must be a positive integer");
+                        options.downloadRatePerSecond = rate;
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid --download-rate value: " + args[i].trim());
+                    }
+                    break;
+                    
+                case "--month":
+                    if (i + 1 >= args.length) {
+                        throw new IllegalArgumentException("Missing value for " + arg);
+                    }
+                    String monthValue = args[++i].trim();
+                    if (!isValidMonth(monthValue)) {
+                        throw new IllegalArgumentException("Invalid month name: " + monthValue + ". Valid months are: january, february, march, april, may, june, july, august, september, october, november, december");
+                    }
+                    options.monthName = monthValue.toLowerCase();
+                    break;
                     
                 default:
                     throw new IllegalArgumentException("Unknown argument: " + arg);
             }
+        }
+        
+        // Validate that month option is only used with incremental mode
+        if (options.monthName != null && !options.isIncrementalUpdates() && !options.isIncrementalDownloads() && !options.isIncrementalProcessing()) {
+            throw new IllegalArgumentException("--month option can only be used with incremental mode (--incremental, --incremental-downloads, or --incremental-processing)");
         }
         
         return options;
@@ -166,6 +263,11 @@ public class CommandLineOptions {
         System.out.println("      --incremental-downloads   Enable incremental updates for downloads only");
         System.out.println("      --incremental-processing  Enable incremental updates for processing only");
         System.out.println("      --baseline-file <path>    Specify baseline IAPD_Data.csv file for incremental comparison");
+        System.out.println("      --month <month>           Specify month name for incremental updates (requires incremental mode)");
+        System.out.println("                                Valid months: january, february, march, april, may, june,");
+        System.out.println("                                july, august, september, october, november, december");
+    System.out.println("      --xml-rate <n>            Limit firms parsed from XML per second (overrides config)");
+    System.out.println("      --download-rate <n>       Limit brochure downloads per second (overrides config)");
         System.out.println("  -h, --help                    Show this help message");
         System.out.println();
         System.out.println("Examples:");
@@ -176,6 +278,9 @@ public class CommandLineOptions {
         System.out.println("  java IAFirmSECParserRefactored --resume-downloads --validate-pdfs");
         System.out.println("  java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Output/IAPD_Data.csv");
         System.out.println("  java IAFirmSECParserRefactored --incremental-downloads --baseline-file ./Data/Output/IAPD_Data.csv");
+        System.out.println("  java IAFirmSECParserRefactored --incremental --month january");
+        System.out.println("  java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Output/IAPD_Data.csv --month december");
+    System.out.println("  java IAFirmSECParserRefactored --xml-rate 2 --download-rate 5");
     }
     
     // Getters
@@ -227,6 +332,18 @@ public class CommandLineOptions {
         return baselineFilePath;
     }
     
+    public String getMonthName() {
+        return monthName;
+    }
+    
+    public Integer getXmlRatePerSecond() {
+        return xmlRatePerSecond;
+    }
+    
+    public Integer getDownloadRatePerSecond() {
+        return downloadRatePerSecond;
+    }
+    
     // Setters for testing or programmatic configuration
     public void setIndexLimit(int indexLimit) {
         this.indexLimit = indexLimit;
@@ -272,6 +389,10 @@ public class CommandLineOptions {
         this.baselineFilePath = baselineFilePath;
     }
     
+    public void setMonthName(String monthName) {
+        this.monthName = monthName;
+    }
+    
     @Override
     public String toString() {
         return "CommandLineOptions{" +
@@ -287,6 +408,9 @@ public class CommandLineOptions {
                 ", incrementalDownloads=" + incrementalDownloads +
                 ", incrementalProcessing=" + incrementalProcessing +
                 ", baselineFilePath='" + baselineFilePath + '\'' +
+                ", monthName='" + monthName + '\'' +
+                ", xmlRatePerSecond=" + xmlRatePerSecond +
+                ", downloadRatePerSecond=" + downloadRatePerSecond +
                 '}';
     }
 }

@@ -111,7 +111,8 @@ public class RetryUtils {
             if (lowerMessage.contains("non-transient")) {
                 return false;
             }
-            return lowerMessage.contains("timeout") ||
+            return lowerMessage.contains("transient") ||
+                   lowerMessage.contains("timeout") ||
                    lowerMessage.contains("connection") ||
                    lowerMessage.contains("network") ||
                    lowerMessage.contains("socket") ||
