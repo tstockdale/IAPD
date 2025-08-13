@@ -71,7 +71,6 @@ public class FirmDataBuilderTest {
             assertEquals("50", firmData.getTotalEmployees());
             assertEquals("1000000000", firmData.getAUM());
             assertEquals("500", firmData.getTotalAccounts());
-            assertEquals("https://example.com/brochure.pdf", firmData.getBrochureURL());
         }
         
         @Test
@@ -225,16 +224,6 @@ public class FirmDataBuilderTest {
             assertEquals("75", firmData.getTotalEmployees());
             assertEquals("2500000000", firmData.getAUM());
             assertEquals("1200", firmData.getTotalAccounts());
-        }
-        
-        @Test
-        @DisplayName("Should set and get brochure URL")
-        void testBrochureURL() {
-            builder.setBrochureURL("https://firm.com/documents/brochure.pdf");
-            
-            FirmData firmData = builder.setFirmCrdNb("12345").setBusNm("Test").build();
-            
-            assertEquals("https://firm.com/documents/brochure.pdf", firmData.getBrochureURL());
         }
     }
     

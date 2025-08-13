@@ -272,35 +272,6 @@ public class BrochureDownloadService {
     }
     
     /**
-     * Gets brochure URL for a firm without downloading (used by XML processing)
-     * @param firmCrdNb the firm CRD number
-     * @param context processing context
-     * @return brochure URL or null if not found
-     */
-    public String getBrochureURL(String firmCrdNb, ProcessingContext context) {
-        try {
-            String url = String.format(Config.FIRM_API_URL_FORMAT, firmCrdNb);
-            String response = HttpUtils.getHTTPSResponse(url);
-            
-            if (response != null) {
-                Matcher matcher = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN.matcher(response);
-                if (matcher.find()) {
-                    return Config.BROCHURE_URL_BASE + matcher.group(1);
-                } else {
-                    ProcessingLogger.logWarning("No brochure version ID found in API response for firm: " + firmCrdNb);
-                    return null;
-                }
-            } else {
-                ProcessingLogger.logWarning("No response received from API for firm: " + firmCrdNb);
-                return null;
-            }
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error getting brochure URL for firm " + firmCrdNb, e);
-            return null;
-        }
-    }
-    
-    /**
      * Counts the number of records in a CSV file
      */
     private int countRecordsInFile(Path csvFile) {
@@ -321,6 +292,141 @@ public class BrochureDownloadService {
             ProcessingLogger.logError("Error counting records in file: " + csvFile, e);
         }
         return count;
+    }
+    
+    /**
+     * Downloads brochures based on FilesToDownload CSV file
+     * @param filesToDownloadPath path to FilesToDownload CSV file containing brochure information
+     * @param context processing context for configuration and state tracking
+     * @return path to updated FilesToDownload file with download status and filename
+     * @throws BrochureProcessingException if downloading fails
+     */
+    public Path downloadBrochuresFromFilesToDownload(Path filesToDownloadPath, ProcessingContext context) throws BrochureProcessingException {
+        ProcessingLogger.logInfo("Starting brochure download from FilesToDownload: " + filesToDownloadPath);
+        context.setCurrentProcessingFile(filesToDownloadPath.getFileName().toString());
+        
+        // Create output file path
+        String inputFileName = filesToDownloadPath.getFileName().toString();
+        String outputFileName = inputFileName.replace(".csv", "_with_downloads.csv");
+        Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
+        
+        try (Reader reader = Files.newBufferedReader(filesToDownloadPath, StandardCharsets.UTF_8);
+             BufferedWriter writer = Files.newBufferedWriter(outputFilePath, StandardCharsets.UTF_8)) {
+            
+            Iterable<CSVRecord> records = CSVFormat.EXCEL
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setQuoteMode(QuoteMode.MINIMAL)
+                    .build()
+                    .parse(reader);
+            
+            // Write header with additional columns for download status and filename
+            writer.write("firmId,firmName,brochureVersionId,brochureName,dateSubmitted,dateConfirmed,downloadStatus,fileName" + System.lineSeparator());
+            
+            int processedCount = 0;
+            RateLimiter limiter = RateLimiter.perSecond(context.getDownloadRatePerSecond());
+            
+            for (CSVRecord csvRecord : records) {
+                String downloadStatus = "FAILED";
+                String fileName = "";
+                
+                try {
+                    String firmId = csvRecord.get("firmId");
+                    String brochureVersionId = csvRecord.get("brochureVersionId");
+                    
+                    if (brochureVersionId != null && !brochureVersionId.isEmpty()) {
+                        // Skip download if configured
+                        if (context.isSkipBrochureDownload()) {
+                            downloadStatus = "SKIPPED";
+                        } else {
+                            // Construct brochure URL and filename
+                            String brochureURL = Config.BROCHURE_URL_BASE + brochureVersionId;
+                            final String finalFileName = firmId + "_" + brochureVersionId + ".pdf";
+                            
+                            // Use retry logic for downloading
+                            String downloadResult = RetryUtils.executeWithRetry(() -> {
+                                try {
+                                    fileDownloadService.downloadBrochure(brochureURL, finalFileName);
+                                    return "SUCCESS";
+                                } catch (Exception e) {
+                                    if (RetryUtils.isTransientException(e)) {
+                                        throw new RuntimeException("Transient error downloading brochure for firm " + firmId, e);
+                                    } else {
+                                        ProcessingLogger.logError("Non-transient error downloading brochure for firm " + firmId, e);
+                                        return "FAILED: " + e.getMessage();
+                                    }
+                                }
+                            }, "Download brochure for firm " + firmId);
+                            
+                            downloadStatus = downloadResult;
+                            
+                            if ("SUCCESS".equals(downloadResult)) {
+                                context.incrementSuccessfulDownloads();
+                                ProcessingLogger.incrementFirmsWithBrochures();
+                                fileName = finalFileName;
+                            } else {
+                                context.incrementFailedDownloads();
+                                ProcessingLogger.incrementBrochureDownloadFailures();
+                                fileName = ""; // Clear filename on failure
+                            }
+                        }
+                    } else {
+                        downloadStatus = "NO_VERSION_ID";
+                    }
+                    
+                } catch (Exception e) {
+                    context.incrementFailedDownloads();
+                    ProcessingLogger.logError("Error processing brochure download record", e);
+                    downloadStatus = "ERROR: " + e.getMessage();
+                    fileName = "";
+                }
+                
+                // Write record with download status and filename
+                writeFilesToDownloadRecordWithStatus(writer, csvRecord, downloadStatus, fileName);
+                processedCount++;
+                
+                // Log progress periodically if verbose
+                if (context.isVerbose() && processedCount % 100 == 0) {
+                    ProcessingLogger.logInfo("Downloaded " + processedCount + " brochures so far...");
+                    context.logCurrentState();
+                }
+                
+                // Rate limiting (only for actual downloads)
+                if (!"SKIPPED".equals(downloadStatus) && !"NO_VERSION_ID".equals(downloadStatus)) {
+                    limiter.acquire();
+                }
+            }
+            
+            ProcessingLogger.logInfo("Brochure download from FilesToDownload completed. Processed " + processedCount + " records.");
+            ProcessingLogger.logInfo("Output file: " + outputFilePath);
+            
+            return outputFilePath;
+            
+        } catch (Exception e) {
+            context.setLastError("Error downloading brochures from FilesToDownload: " + filesToDownloadPath + " - " + e.getMessage());
+            throw new BrochureProcessingException("Error downloading brochures from FilesToDownload: " + filesToDownloadPath, e);
+        }
+    }
+    
+    /**
+     * Writes a FilesToDownload record with download status and filename to the output CSV
+     */
+    private void writeFilesToDownloadRecordWithStatus(BufferedWriter writer, CSVRecord csvRecord, String downloadStatus, String fileName) throws Exception {
+        // Write all original columns
+        for (int i = 0; i < csvRecord.size(); i++) {
+            String value = csvRecord.get(i);
+            if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+                writer.write("\"" + value.replaceAll("\"", "\"\"") + "\"");
+            } else {
+                writer.write(value);
+            }
+            writer.write(",");
+        }
+        
+        // Add download status and filename columns
+        writer.write(downloadStatus + "," + fileName);
+        writer.write(System.lineSeparator());
     }
     
     /**

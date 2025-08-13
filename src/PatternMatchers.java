@@ -37,7 +37,7 @@ public final class PatternMatchers {
     public static final String BATTEA_MATCHER = createClassActionPattern("Battea");
     public static final String CCC_MATCHER = createClassActionPattern("CCC");
     public static final String ROBBINS_GELLER_MATCHER = createClassActionPattern("Robbins Geller");
-    public static final String THIRD_PARTY_PROXY_MATCHER = "(?:proxy[^.]*?third[\\s-]party|third[\\s-]party[^.]*?proxy)";
+    public static final String THIRD_PARTY_PROXY_MATCHER = "(?:prox[iy][^.]*?third[\\s-]party|third[\\s-]party[^.]*?prox[iy])";
     public static final String ISS_CLASS_ACTION_MATCHER = createClassActionPattern("(?:ISS|Institutional Shareholder Services)");
     public static final String EMAIL_SENTENCE_MATCHER = "Item 17.{1,500}(.{10}\\.[^.]*?" + EMAIL_PATTERN_BASE + "[^.]*?\\.).{1,500}Item 18";
     public static final String EMAIL_COMPLIANCE_SENTENCE_MATCHER = "(?:(.{10}\\.[^.]{1,300}[Cc]ompliance[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}\\.)|(.{10}\\.[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}[Cc]ompliance[^.]{1,300}\\.))";

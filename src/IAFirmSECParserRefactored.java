@@ -12,6 +12,7 @@ import java.nio.file.Path;
 public class IAFirmSECParserRefactored {
     
     private final XMLProcessingService xmlProcessingService;
+    private final BrochureURLExtractionService brochureURLExtractionService;
     private final BrochureDownloadService brochureDownloadService;
     private final BrochureProcessingService brochureProcessingService;
     private final FileDownloadService fileDownloadService;
@@ -24,6 +25,7 @@ public class IAFirmSECParserRefactored {
         // Initialize services with dependency injection
         this.fileDownloadService = new FileDownloadService();
         this.xmlProcessingService = new XMLProcessingService();
+        this.brochureURLExtractionService = new BrochureURLExtractionService();
         this.brochureDownloadService = new BrochureDownloadService(fileDownloadService);
         this.configurationManager = new ConfigurationManager();
         this.incrementalUpdateManager = new IncrementalUpdateManager();
@@ -123,10 +125,11 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
-     * Processes IAPD data in three distinct steps:
-     * 1. Download and parse XML to extract firm data with brochure URLs
-     * 2. Download brochure PDF files based on URLs from step 1
-     * 3. Process and analyze the downloaded brochures
+     * Processes IAPD data in four distinct steps:
+     * 1. Download and parse XML to extract firm data (without brochure URLs)
+     * 2. Extract brochure URLs from FIRM API and create FilesToDownload
+     * 3. Download brochure PDF files based on FilesToDownload
+     * 4. Process and analyze the downloaded brochures, merge data and save as IAPD_Data
      * @param context processing context containing configuration and runtime state
      */
     public void processIAPDDataInSteps(ProcessingContext context) {
@@ -147,22 +150,28 @@ public class IAFirmSECParserRefactored {
                 processMonthlyBrochures(monthlyDataPath, context);
                 
             } else {
-                // Standard mode: Three-step processing
+                // Standard mode: Four-step processing
                 
-                // Step 1: Download XML and extract firm data with brochure URLs
+                // Step 1: Download XML and extract firm data (without brochure URLs)
                 Path firmDataFile = downloadAndParseXMLData(context);
                 if (firmDataFile == null) {
                     return; // Error already logged
                 }
                 
-                // Step 2: Download brochure PDF files
-                Path firmDataWithDownloads = downloadBrochures(firmDataFile, context);
-                if (firmDataWithDownloads == null) {
+                // Step 2: Extract brochure URLs and create FilesToDownload
+                Path filesToDownload = extractBrochureURLs(firmDataFile, context);
+                if (filesToDownload == null) {
                     return; // Error already logged
                 }
                 
-                // Step 3: Process and analyze brochures
-                processBrochures(firmDataWithDownloads, context);
+                // Step 3: Download brochure PDF files
+                Path filesToDownloadWithStatus = downloadBrochures(filesToDownload, context);
+                if (filesToDownloadWithStatus == null) {
+                    return; // Error already logged
+                }
+                
+                // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
+                processBrochures(firmDataFile, filesToDownloadWithStatus, context);
             }
             
         } catch (Exception e) {
@@ -174,9 +183,9 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
-     * Step 1: Downloads XML data and extracts firm information with brochure URLs
+     * Step 1: Downloads XML data and extracts firm information (without brochure URLs)
      * @param context processing context
-     * @return path to CSV file with firm data and brochure URLs, or null if failed
+     * @return path to CSV file with firm data (without brochure URLs), or null if failed
      */
     private Path downloadAndParseXMLData(ProcessingContext context) {
         try {
@@ -198,7 +207,7 @@ public class IAFirmSECParserRefactored {
                 context.setCurrentProcessingFile(extractedFile.getName());
                 context.setCurrentPhase(ProcessingPhase.PARSING_XML);
                 
-                // Process the XML file and get the output file path (with brochure URLs, no downloads yet)
+                // Process the XML file and get the output file path (without brochure URLs)
                 Path outputFilePath = xmlProcessingService.processXMLFile(extractedFile, context);
                 
                 if (outputFilePath != null) {
@@ -228,20 +237,52 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
-     * Step 2: Downloads brochure PDF files based on URLs in the firm data CSV
-     * @param firmDataFile path to CSV file with firm data and brochure URLs
+     * Step 2: Extracts brochure URLs from FIRM API and creates FilesToDownload
+     * @param firmDataFile path to CSV file with firm data (without brochure URLs)
      * @param context processing context
-     * @return path to updated CSV file with download status, or null if failed
+     * @return path to FilesToDownload CSV file, or null if failed
      */
-    private Path downloadBrochures(Path firmDataFile, ProcessingContext context) {
+    private Path extractBrochureURLs(Path firmDataFile, ProcessingContext context) {
         try {
-            context.setCurrentPhase(ProcessingPhase.DOWNLOADING_BROCHURES);
-            ProcessingLogger.logInfo("=== STEP 2: Downloading brochure PDF files ===");
+            context.setCurrentPhase(ProcessingPhase.EXTRACTING_BROCHURE_URLS);
+            ProcessingLogger.logInfo("=== STEP 2: Extracting brochure URLs from FIRM API ===");
             
-            Path outputFilePath = brochureDownloadService.downloadBrochures(firmDataFile, context);
+            Path outputFilePath = brochureURLExtractionService.processFirmDataForBrochures(firmDataFile.toFile(), context);
             
             if (outputFilePath != null) {
-                ProcessingLogger.logInfo("Brochure download completed. Updated firm data file: " + outputFilePath);
+                ProcessingLogger.logInfo("Brochure URL extraction completed. FilesToDownload file: " + outputFilePath);
+                return outputFilePath;
+            } else {
+                context.setLastError("Failed to extract brochure URLs");
+                context.setCurrentPhase(ProcessingPhase.ERROR);
+                System.err.println("Failed to extract brochure URLs");
+                return null;
+            }
+            
+        } catch (Exception e) {
+            context.setLastError("Error in brochure URL extraction step: " + e.getMessage());
+            context.setCurrentPhase(ProcessingPhase.ERROR);
+            System.err.println("Error in brochure URL extraction step: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Step 3: Downloads brochure PDF files based on FilesToDownload
+     * @param filesToDownload path to FilesToDownload CSV file
+     * @param context processing context
+     * @return path to updated FilesToDownload file with download status, or null if failed
+     */
+    private Path downloadBrochures(Path filesToDownload, ProcessingContext context) {
+        try {
+            context.setCurrentPhase(ProcessingPhase.DOWNLOADING_BROCHURES);
+            ProcessingLogger.logInfo("=== STEP 3: Downloading brochure PDF files ===");
+            
+            Path outputFilePath = brochureDownloadService.downloadBrochuresFromFilesToDownload(filesToDownload, context);
+            
+            if (outputFilePath != null) {
+                ProcessingLogger.logInfo("Brochure download completed. Updated FilesToDownload file: " + outputFilePath);
                 return outputFilePath;
             } else {
                 context.setLastError("Failed to download brochures");
@@ -260,16 +301,17 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
-     * Step 3: Processes and analyzes the downloaded brochures
-     * @param firmDataWithDownloads path to CSV file with firm data and download status
+     * Step 4: Processes and analyzes the downloaded brochures, merges data and saves as IAPD_Data
+     * @param firmDataFile path to original firm data CSV file
+     * @param filesToDownloadWithStatus path to FilesToDownload file with download status
      * @param context processing context
      */
-    private void processBrochures(Path firmDataWithDownloads, ProcessingContext context) {
+    private void processBrochures(Path firmDataFile, Path filesToDownloadWithStatus, ProcessingContext context) {
         try {
             context.setCurrentPhase(ProcessingPhase.PROCESSING_BROCHURES);
-            ProcessingLogger.logInfo("=== STEP 3: Processing and analyzing brochures ===");
+            ProcessingLogger.logInfo("=== STEP 4: Processing and analyzing brochures ===");
             
-            brochureProcessingService.processBrochures(firmDataWithDownloads, context);
+            brochureProcessingService.processBrochuresWithMerge(firmDataFile, filesToDownloadWithStatus, context);
             
             ProcessingLogger.logInfo("Brochure processing completed successfully.");
             

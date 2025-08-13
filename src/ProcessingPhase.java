@@ -5,6 +5,7 @@ public enum ProcessingPhase {
     INITIALIZATION("Initializing application"),
     DOWNLOADING_XML("Downloading XML data"),
     PARSING_XML("Parsing XML file and extracting firm data"),
+    EXTRACTING_BROCHURE_URLS("Extracting brochure URLs from FIRM API"),
     DOWNLOADING_BROCHURES("Downloading brochure PDF files"),
     PROCESSING_BROCHURES("Processing and analyzing brochures"),
     GENERATING_OUTPUT("Generating output files"),

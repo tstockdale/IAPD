@@ -120,7 +120,6 @@ public class BrochureAnalyzer {
         }
         
         private void extractEmailSentence(Pattern pattern, String text, StringBuilder result) {
-        	ProcessingLogger.logProviderMatch("Executing email pattern: " + pattern.pattern());
             Matcher matcher = pattern.matcher(text);
             if (matcher.find()) {
                 if (matcher.group(1) != null) {

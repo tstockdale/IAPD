@@ -26,7 +26,7 @@ public class ProcessingContext {
     private final String configSource;
     private final LocalDateTime createdAt;
     // Rate limiting configuration
-    private final int xmlRatePerSecond;
+    private final int urlRatePerSecond;
     private final int downloadRatePerSecond;
     
     // Runtime State (mutable, thread-safe)
@@ -58,7 +58,7 @@ public class ProcessingContext {
         this.configSource = builder.configSource;
         this.createdAt = LocalDateTime.now();
         this.processingStartTime.set(System.currentTimeMillis());
-    this.xmlRatePerSecond = builder.xmlRatePerSecond;
+    this.urlRatePerSecond = builder.urlRatePerSecond;
     this.downloadRatePerSecond = builder.downloadRatePerSecond;
     }
     
@@ -79,7 +79,7 @@ public class ProcessingContext {
     public String getMonthName() { return monthName; }
     public String getConfigSource() { return configSource; }
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public int getXmlRatePerSecond() { return xmlRatePerSecond; }
+    public int getURLRatePerSecond() { return urlRatePerSecond; }
     public int getDownloadRatePerSecond() { return downloadRatePerSecond; }
     
     // Runtime state getters
@@ -169,7 +169,7 @@ public class ProcessingContext {
         private String baselineFilePath = null;
         private String monthName = null;
         private String configSource = "builder";
-    private int xmlRatePerSecond = 1;
+    private int urlRatePerSecond = 1;
     private int downloadRatePerSecond = 1;
         
         public Builder indexLimit(int indexLimit) {
@@ -258,11 +258,11 @@ public class ProcessingContext {
             return this;
         }
         
-        public Builder xmlRatePerSecond(int rate) {
+        public Builder urlRatePerSecond(int rate) {
             if (rate <= 0) {
                 throw new IllegalArgumentException("xmlRatePerSecond must be > 0");
             }
-            this.xmlRatePerSecond = rate;
+            this.urlRatePerSecond = rate;
             return this;
         }
         
@@ -303,7 +303,7 @@ public class ProcessingContext {
                 .baselineFilePath(options.getBaselineFilePath())
                 .monthName(options.getMonthName())
                 // If CLI specified rate overrides, apply them; otherwise builder defaults hold
-                .xmlRatePerSecond(options.getXmlRatePerSecond() != null ? options.getXmlRatePerSecond() : 1)
+                .urlRatePerSecond(options.getURLRatePerSecond() != null ? options.getURLRatePerSecond() : 1)
                 .downloadRatePerSecond(options.getDownloadRatePerSecond() != null ? options.getDownloadRatePerSecond() : 1)
                 .configSource("command-line")
                 .build();

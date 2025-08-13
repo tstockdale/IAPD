@@ -26,10 +26,6 @@ public class XMLProcessingService {
     public XMLProcessingService() {
       
     }
-    // Rate limiter is created per run based on context settings
-    private RateLimiter xmlRateLimiter(ProcessingContext context) {
-        return RateLimiter.perSecond(context.getXmlRatePerSecond());
-    }
     
     /**
      * Processes the XML file containing firm data
@@ -198,13 +194,12 @@ public class XMLProcessingService {
             XMLInputFactory factory = XMLInputFactory.newInstance();
             XMLStreamReader reader = factory.createXMLStreamReader(in, Config.ENCODING);
             
-        RateLimiter limiter = xmlRateLimiter(context);
         while (reader.hasNext() && !context.hasReachedIndexLimit()) {
                 reader.next();
                 if (reader.getEventType() == XMLStreamReader.START_ELEMENT && 
                     "Firm".equals(reader.getLocalName())) {
                     
-                    if (!processNextFirm(reader, printer, context, limiter)) {
+                    if (!processNextFirm(reader, printer, context)) {
                         break;
                     }
                     
@@ -224,7 +219,7 @@ public class XMLProcessingService {
     /**
      * Processes a single firm record from the XML
      */
-    private boolean processNextFirm(XMLStreamReader reader, CSVPrinter printer, ProcessingContext context, RateLimiter limiter) throws Exception {
+    private boolean processNextFirm(XMLStreamReader reader, CSVPrinter printer, ProcessingContext context) throws Exception {
         FirmDataBuilder firmBuilder = new FirmDataBuilder();
         
         while (reader.hasNext()) {
@@ -259,13 +254,11 @@ public class XMLProcessingService {
                 context.incrementProcessedFirms();
                 
                 // Get brochure URL and write complete record
-                String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb(), context);
+                String brochureURL = null;
                 firmBuilder.setBrochureURL(brochureURL);
                 
                 writeFirmRecord(printer, firmBuilder.build());
                 
-                // Rate limiting
-                limiter.acquire();
                 return true;
             }
             reader.next();
@@ -348,7 +341,7 @@ public class XMLProcessingService {
             firmData.getTotalEmployees(),
             firmData.getAUM(),
             firmData.getTotalAccounts(),
-            firmData.getBrochureURL() != null ? firmData.getBrochureURL() : ""
+            ""
         );
     }
     
@@ -357,47 +350,6 @@ public class XMLProcessingService {
      */
     private String sanitizeValue(String value) {
         return value != null ? value.replaceAll("\"", "") : "";
-    }
-    
-    /**
-     * Retrieves the brochure URL for a given firm CRD number (URL only, no downloading)
-     */
-    private String getBrochureURL(String firmCrdNb, ProcessingContext context) {
-        // Use retry logic for getting brochure URL
-        String brochureURL = RetryUtils.executeWithRetry(() -> {
-            try {
-                String url = String.format(Config.FIRM_API_URL_FORMAT, firmCrdNb);
-                String response = HttpUtils.getHTTPSResponse(url);
-                
-                if (response != null) {
-                    Matcher matcher = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN.matcher(response);
-                    if (matcher.find()) {
-                        String foundBrochureURL = Config.BROCHURE_URL_BASE + matcher.group(1);
-                        return foundBrochureURL;
-                    } else {
-                        ProcessingLogger.logWarning("No brochure version ID found in API response for firm: " + firmCrdNb);
-                        return null;
-                    }
-                } else {
-                    throw new RuntimeException("No response received from API for firm: " + firmCrdNb);
-                }
-            } catch (Exception e) {
-                // Check if this is a transient exception that should be retried
-                if (RetryUtils.isTransientException(e)) {
-                    throw new RuntimeException("Transient error getting brochure URL for firm " + firmCrdNb, e);
-                } else {
-                    // Non-transient error, don't retry
-                    ProcessingLogger.logError("Non-transient error getting brochure URL for firm " + firmCrdNb, e);
-                    return null;
-                }
-            }
-        }, "Get brochure URL for firm " + firmCrdNb);
-        
-        if (brochureURL == null) {
-            ProcessingLogger.incrementFirmsWithoutBrochures();
-        }
-        
-        return brochureURL;
     }
     
     /**
@@ -468,7 +420,7 @@ public class XMLProcessingService {
                       "Firm".equalsIgnoreCase(reader.getLocalName())) {
                 
                 // Get brochure URL and build complete firm data
-                String brochureURL = getBrochureURL(firmBuilder.getFirmCrdNb(), context);
+                String brochureURL = null;
                 firmBuilder.setBrochureURL(brochureURL);
                 
                 return firmBuilder.build();
