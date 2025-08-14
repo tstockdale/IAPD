@@ -90,9 +90,8 @@
   </dependencies>
 
   <build>
-    <!-- Match current repo layout: production sources in src/, tests in src/test/java -->
-    <sourceDirectory>src</sourceDirectory>
-    <testSourceDirectory>src/test/java</testSourceDirectory>
+    <!-- Standard Maven directory layout -->
+    <!-- sourceDirectory and testSourceDirectory use Maven defaults: src/main/java and src/test/java -->
 
     <plugins>
       <plugin>
@@ -104,11 +103,7 @@
           <target>${maven.compiler.target}</target>
           <release>${maven.compiler.release}</release>
           <encoding>${project.build.sourceEncoding}</encoding>
-          <!-- Exclude test sources under src/test from main compilation -->
-          <excludes>
-            <exclude>test/**</exclude>
-            <exclude>test/**/*.java</exclude>
-          </excludes>
+          <!-- Standard Maven layout handles source separation automatically -->
         </configuration>
       </plugin>
 
@@ -145,7 +140,7 @@
               <finalName>${project.artifactId}-${project.version}-all</finalName>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>IAFirmSECParserRefactored</mainClass>
+                  <mainClass>com.iss.iapd.core.IAFirmSECParserRefactored</mainClass>
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
               </transformers>

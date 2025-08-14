@@ -194,3 +194,7 @@ tramp
 **/data/output/*.csv
 **/data/xml_file/*.gz
 **data/brochures/*.pdf
+
+# temp folder
+temp/
+temp copy/
