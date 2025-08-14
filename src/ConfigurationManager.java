@@ -1,5 +1,7 @@
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 /**
@@ -172,12 +174,15 @@ public class ConfigurationManager {
         Properties props = new Properties();
         
         // Try to load from current directory first
-        try (FileInputStream fis = new FileInputStream(DEFAULT_CONFIG_FILE)) {
-            props.load(fis);
-            System.out.println("Loaded configuration from: " + DEFAULT_CONFIG_FILE);
-            return props;
-        } catch (IOException e) {
-            // File doesn't exist or can't be read - this is not an error
+        Path configPath = Paths.get(DEFAULT_CONFIG_FILE);
+        if (Files.exists(configPath)) {
+            try {
+                props.load(Files.newInputStream(configPath));
+                System.out.println("Loaded configuration from: " + DEFAULT_CONFIG_FILE);
+                return props;
+            } catch (IOException e) {
+                System.err.println("Warning: Could not load configuration file: " + e.getMessage());
+            }
         }
         
         // Try to load from classpath
@@ -222,8 +227,9 @@ public class ConfigurationManager {
     props.setProperty("# How many brochure downloads per second", "");
     props.setProperty("rate.limit.download.per.second", "1");
         
-        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(filename)) {
-            props.store(fos, "IAPD Parser Configuration");
+        try {
+            Path configPath = Paths.get(filename);
+            props.store(Files.newOutputStream(configPath), "IAPD Parser Configuration");
             System.out.println("Sample configuration file created: " + filename);
         } catch (IOException e) {
             System.err.println("Error creating sample configuration file: " + e.getMessage());

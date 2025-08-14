@@ -1,9 +1,11 @@
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.cert.X509Certificate;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -140,14 +142,14 @@ public class HttpUtils {
     /**
      * Downloads a file from HTTPS URL with centralized retry and timeout logic
      */
-    public static File downloadHTTPSFile(String urlString, String fileName) throws Exception {
+    public static Path downloadHTTPSFile(String urlString, String fileName) throws Exception {
         return downloadHTTPSFile(urlString, fileName, new HttpRequestConfig());
     }
     
     /**
      * Downloads a file from HTTPS URL with custom configuration
      */
-    public static File downloadHTTPSFile(String urlString, String fileName, HttpRequestConfig config) throws Exception {
+    public static Path downloadHTTPSFile(String urlString, String fileName, HttpRequestConfig config) throws Exception {
         String[] urlFields = urlString.split("\\?");
         String postData = urlFields.length > 1 ? urlFields[1] : null;
         
@@ -270,7 +272,7 @@ public class HttpUtils {
     /**
      * Downloads file with retry logic
      */
-    private static File downloadFileWithRetry(String urlString, String fileName, String postData, HttpRequestConfig config) throws Exception {
+    private static Path downloadFileWithRetry(String urlString, String fileName, String postData, HttpRequestConfig config) throws Exception {
         // Apply rate limiting if enabled
         if (config.isUseRateLimiter()) {
             RateLimiter rateLimiter = config.getCustomRateLimiter() != null ? 
@@ -280,9 +282,9 @@ public class HttpUtils {
         
         URL url = new URL(urlString);
         HttpsURLConnection connection = null;
-        FileOutputStream outputStream = null;
+        OutputStream outputStream = null;
         InputStream inputStream = null;
-        File downloadFile = null;
+        Path downloadFile = null;
         
         try {
             // Configure SSL to trust all certificates (for development only)
@@ -320,13 +322,11 @@ public class HttpUtils {
             logDownloadInfo(connection, fileName);
             
             inputStream = connection.getInputStream();
-            File parentFolder = new File(Config.DOWNLOAD_PATH);
-            if (!parentFolder.exists()) {
-                parentFolder.mkdirs();
-            }
+            Path parentFolder = Paths.get(Config.DOWNLOAD_PATH);
+            Files.createDirectories(parentFolder);
             
-            downloadFile = new File(parentFolder, fileName);
-            outputStream = new FileOutputStream(downloadFile);
+            downloadFile = parentFolder.resolve(fileName);
+            outputStream = Files.newOutputStream(downloadFile);
             
             byte[] buffer = new byte[Config.BUFFER_SIZE];
             int bytesRead;
@@ -512,7 +512,7 @@ public class HttpUtils {
     /**
      * Closes resources safely
      */
-    private static void closeResources(FileOutputStream outputStream, InputStream inputStream, HttpsURLConnection connection) {
+    private static void closeResources(OutputStream outputStream, InputStream inputStream, HttpsURLConnection connection) {
         try {
             if (outputStream != null) outputStream.close();
             if (inputStream != null) inputStream.close();
@@ -525,7 +525,7 @@ public class HttpUtils {
     /**
      * Downloads the latest IAPD XML data file from SEC website with enhanced retry logic
      */
-    public static File downloadLatestIAPDData(String outputPath) throws Exception {
+    public static Path downloadLatestIAPDData(String outputPath) throws Exception {
         HttpRequestConfig config = new HttpRequestConfig()
             .maxRetries(MAX_RETRIES)
             .connectTimeout(45000)  // Longer timeout for large files
@@ -553,9 +553,9 @@ public class HttpUtils {
             
             try {
                 ProcessingLogger.logInfo("Attempting to download: " + downloadUrl);
-                File downloadedFile = downloadHTTPSFile(downloadUrl, fileName, config);
+                Path downloadedFile = downloadHTTPSFile(downloadUrl, fileName, config);
                 
-                if (downloadedFile != null && downloadedFile.exists()) {
+                if (downloadedFile != null && Files.exists(downloadedFile)) {
                     ProcessingLogger.logInfo("Successfully downloaded IAPD XML data: " + fileName);
                     return downloadedFile;
                 }
@@ -571,7 +571,7 @@ public class HttpUtils {
     /**
      * Downloads a specific IAPD data file by date with enhanced retry logic
      */
-    public static File downloadIAPDDataByDate(int year, int month, String outputPath) throws Exception {
+    public static Path downloadIAPDDataByDate(int year, int month, String outputPath) throws Exception {
         HttpRequestConfig config = new HttpRequestConfig()
             .maxRetries(MAX_RETRIES)
             .connectTimeout(45000)
@@ -585,9 +585,9 @@ public class HttpUtils {
         String downloadUrl = String.format("https://reports.adviserinfo.sec.gov/reports/CompilationReports/%s", fileName);
         
         ProcessingLogger.logInfo("Downloading IAPD data: " + downloadUrl);
-        File downloadedFile = downloadHTTPSFile(downloadUrl, fileName, config);
+        Path downloadedFile = downloadHTTPSFile(downloadUrl, fileName, config);
         
-        if (downloadedFile != null && downloadedFile.exists()) {
+        if (downloadedFile != null && Files.exists(downloadedFile)) {
             ProcessingLogger.logInfo("Successfully downloaded IAPD data: " + fileName);
             return downloadedFile;
         } else {
@@ -598,29 +598,25 @@ public class HttpUtils {
     /**
      * Extracts a GZ file to the specified directory
      */
-    public static File extractGZFile(File gzFile, String extractToDir) throws Exception {
-        File extractDir = new File(extractToDir);
-        if (!extractDir.exists()) {
-            extractDir.mkdirs();
-        }
+    public static Path extractGZFile(Path gzFile, String extractToDir) throws Exception {
+        Path extractDir = Paths.get(extractToDir);
+        Files.createDirectories(extractDir);
         
         java.util.zip.GZIPInputStream gzIn = null;
-        java.io.BufferedOutputStream bos = null;
-        File extractedFile = null;
+        OutputStream bos = null;
+        Path extractedFile = null;
         
         try {
-            gzIn = new java.util.zip.GZIPInputStream(new java.io.FileInputStream(gzFile));
+            gzIn = new java.util.zip.GZIPInputStream(Files.newInputStream(gzFile));
             
             // Determine the output file name by removing .gz extension
-            String originalFileName = gzFile.getName();
+            String originalFileName = gzFile.getFileName().toString();
             String extractedFileName = originalFileName.endsWith(".gz") ? 
                 originalFileName.substring(0, originalFileName.length() - 3) : 
                 originalFileName + ".extracted";
             
-            String filePath = extractToDir + File.separator + extractedFileName;
-            extractedFile = new File(filePath);
-            
-            bos = new java.io.BufferedOutputStream(new java.io.FileOutputStream(extractedFile));
+            extractedFile = extractDir.resolve(extractedFileName);
+            bos = Files.newOutputStream(extractedFile);
             
             byte[] buffer = new byte[Config.BUFFER_SIZE];
             int bytesRead;

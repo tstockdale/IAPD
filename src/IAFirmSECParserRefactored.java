@@ -1,5 +1,6 @@
-import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Refactored Investment Adviser Public Disclosure (IAPD) Parser
@@ -48,15 +49,12 @@ public class IAFirmSECParserRefactored {
             System.setProperty("log.path", logPath);
             
             // Create log directory if it doesn't exist
-            String logDir = System.getProperty("user.dir") + File.separator + logPath;
-            File logDirectory = new File(logDir);
-            if (!logDirectory.exists()) {
-                boolean created = logDirectory.mkdirs();
-                if (created) {
-                    System.out.println("Created log directory: " + logDir);
-                } else {
-                    System.err.println("Failed to create log directory: " + logDir);
-                }
+            Path logDir = Paths.get(System.getProperty("user.dir")).resolve(logPath);
+            try {
+                Files.createDirectories(logDir);
+                System.out.println("Created log directory: " + logDir);
+            } catch (Exception e) {
+                System.err.println("Failed to create log directory: " + logDir + " - " + e.getMessage());
             }
             
             // Force ProcessingLogger initialization to ensure static block runs
@@ -193,22 +191,24 @@ public class IAFirmSECParserRefactored {
             ProcessingLogger.logInfo("=== STEP 1: Downloading and parsing XML data ===");
             ProcessingLogger.logInfo("Downloading latest IAPD data from SEC website...");
             
-            // Download the latest ZIP file
-            File zipFile = fileDownloadService.downloadLatestIAPDData(Config.FIRM_FILE_PATH);
+            // Download the latest ZIP file (FileDownloadService still returns File, so convert to Path)
+            java.io.File zipFileObj = fileDownloadService.downloadLatestIAPDData(Config.FIRM_FILE_PATH);
+            Path zipFile = zipFileObj.toPath();
             context.incrementSuccessfulDownloads();
             
             // Extract the ZIP file
-            File extractedFile = fileDownloadService.extractGZFile(zipFile, Config.FIRM_FILE_PATH);
+            java.io.File extractedFileObj = fileDownloadService.extractGZFile(zipFileObj, Config.FIRM_FILE_PATH);
+            Path extractedFile = extractedFileObj != null ? extractedFileObj.toPath() : null;
             
-            if (extractedFile != null && extractedFile.exists()) {
-                ProcessingLogger.logInfo("Successfully downloaded and extracted IAPD data: " + extractedFile.getName());
-                ProcessingLogger.logInfo("IAPD data file location: " + extractedFile.getAbsolutePath());
+            if (extractedFile != null && Files.exists(extractedFile)) {
+                ProcessingLogger.logInfo("Successfully downloaded and extracted IAPD data: " + extractedFile.getFileName());
+                ProcessingLogger.logInfo("IAPD data file location: " + extractedFile.toAbsolutePath());
                 
-                context.setCurrentProcessingFile(extractedFile.getName());
+                context.setCurrentProcessingFile(extractedFile.getFileName().toString());
                 context.setCurrentPhase(ProcessingPhase.PARSING_XML);
                 
                 // Process the XML file and get the output file path (without brochure URLs)
-                Path outputFilePath = xmlProcessingService.processXMLFile(extractedFile, context);
+                Path outputFilePath = xmlProcessingService.processXMLFile(extractedFile.toFile(), context);
                 
                 if (outputFilePath != null) {
                     ProcessingLogger.logInfo("XML processing completed. Firm data file: " + outputFilePath);
@@ -358,10 +358,12 @@ public class IAFirmSECParserRefactored {
     }
     
     private void _checkOrMakeDirs(String path) {
-    	File parentFolder = new File(path);
-        if (!parentFolder.exists()) {
-            parentFolder.mkdirs();
-        } 	
+        try {
+            Path parentFolder = Paths.get(path);
+            Files.createDirectories(parentFolder);
+        } catch (Exception e) {
+            System.err.println("Failed to create directory: " + path + " - " + e.getMessage());
+        }
     }
  
 }
