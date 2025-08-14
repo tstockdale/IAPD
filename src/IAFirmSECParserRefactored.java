@@ -18,8 +18,6 @@ public class IAFirmSECParserRefactored {
     private final BrochureProcessingService brochureProcessingService;
     private final FileDownloadService fileDownloadService;
     private final ConfigurationManager configurationManager;
-    private final IncrementalUpdateManager incrementalUpdateManager;
-    private final ResumeStateManager resumeStateManager;
     private final MonthlyDownloadService monthlyDownloadService;
     
     public IAFirmSECParserRefactored() {
@@ -29,8 +27,6 @@ public class IAFirmSECParserRefactored {
         this.brochureURLExtractionService = new BrochureURLExtractionService();
         this.brochureDownloadService = new BrochureDownloadService(fileDownloadService);
         this.configurationManager = new ConfigurationManager();
-        this.incrementalUpdateManager = new IncrementalUpdateManager();
-        this.resumeStateManager = new ResumeStateManager();
         this.monthlyDownloadService = new MonthlyDownloadService(fileDownloadService);
         
         BrochureAnalyzer brochureAnalyzer = new BrochureAnalyzer();
@@ -192,13 +188,11 @@ public class IAFirmSECParserRefactored {
             ProcessingLogger.logInfo("Downloading latest IAPD data from SEC website...");
             
             // Download the latest ZIP file (FileDownloadService still returns File, so convert to Path)
-            java.io.File zipFileObj = fileDownloadService.downloadLatestIAPDData(Config.FIRM_FILE_PATH);
-            Path zipFile = zipFileObj.toPath();
+             Path zipFile = fileDownloadService.downloadLatestIAPDData(Config.FIRM_FILE_PATH);
             context.incrementSuccessfulDownloads();
             
             // Extract the ZIP file
-            java.io.File extractedFileObj = fileDownloadService.extractGZFile(zipFileObj, Config.FIRM_FILE_PATH);
-            Path extractedFile = extractedFileObj != null ? extractedFileObj.toPath() : null;
+            Path extractedFile =  fileDownloadService.extractGZFile(zipFile, Config.FIRM_FILE_PATH);
             
             if (extractedFile != null && Files.exists(extractedFile)) {
                 ProcessingLogger.logInfo("Successfully downloaded and extracted IAPD data: " + extractedFile.getFileName());

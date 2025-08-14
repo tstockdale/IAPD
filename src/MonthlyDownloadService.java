@@ -46,7 +46,7 @@ public class MonthlyDownloadService {
             Path zipFilePath = downloadDir.resolve(zipFileName);
             
             ProcessingLogger.logInfo("Downloading ZIP file to: " + zipFilePath);
-            boolean downloadSuccess = downloadZipFile(monthlyUrl, zipFilePath.toFile());
+            boolean downloadSuccess = downloadZipFile(monthlyUrl, zipFilePath);
             
             if (!downloadSuccess) {
                 ProcessingLogger.logWarning("Failed to download monthly ZIP file for " + monthName);
@@ -83,18 +83,18 @@ public class MonthlyDownloadService {
     /**
      * Downloads a ZIP file from the given URL
      * @param url the URL to download from
-     * @param destinationFile the file to save to
+     * @param destinationPath the path to save to
      * @return true if successful, false otherwise
      */
-    private boolean downloadZipFile(String url, File destinationFile) {
+    private boolean downloadZipFile(String url, Path destinationPath) {
         try {
             // Use HttpUtils.downloadHTTPSFile to download the ZIP file
-            File downloadedFile = HttpUtils.downloadHTTPSFile(url, destinationFile.getName());
+            Path downloadedPath = HttpUtils.downloadHTTPSFile(url, destinationPath.getFileName().toString());
             
-            if (downloadedFile != null && downloadedFile.exists()) {
+            if (downloadedPath != null && Files.exists(downloadedPath)) {
                 // Move the file to the correct location if needed
-                if (!downloadedFile.getAbsolutePath().equals(destinationFile.getAbsolutePath())) {
-                    Files.move(downloadedFile.toPath(), destinationFile.toPath());
+                if (!downloadedPath.equals(destinationPath)) {
+                    Files.move(downloadedPath, destinationPath);
                 }
                 return true;
             }

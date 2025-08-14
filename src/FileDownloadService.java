@@ -1,4 +1,4 @@
-import java.io.File;
+import java.nio.file.Path;
 
 /**
  * Service class responsible for file download operations
@@ -11,7 +11,7 @@ public class FileDownloadService {
      * @param fileName the name to save the file as
      * @return the downloaded file, or null if download failed
      */
-    public File downloadBrochure(String brochureURL, String fileName) {
+    public Path downloadBrochure(String brochureURL, String fileName) {
         try {
             return HttpUtils.downloadHTTPSFile(brochureURL, fileName);
         } catch (Exception e) {
@@ -26,7 +26,7 @@ public class FileDownloadService {
      * @return The downloaded file
      * @throws FileDownloadException if download fails
      */
-    public File downloadLatestIAPDData(String outputPath) throws FileDownloadException {
+    public Path downloadLatestIAPDData(String outputPath) throws FileDownloadException {
         try {
             return HttpUtils.downloadLatestIAPDData(outputPath);
         } catch (Exception e) {
@@ -42,7 +42,7 @@ public class FileDownloadService {
      * @return The downloaded file
      * @throws FileDownloadException if download fails
      */
-    public File downloadIAPDDataByDate(int year, int month, String outputPath) throws FileDownloadException {
+    public Path downloadIAPDDataByDate(int year, int month, String outputPath) throws FileDownloadException {
         try {
             return HttpUtils.downloadIAPDDataByDate(year, month, outputPath);
         } catch (Exception e) {
@@ -57,11 +57,11 @@ public class FileDownloadService {
      * @return The extracted file
      * @throws FileDownloadException if extraction fails
      */
-    public File extractGZFile(File gzFile, String extractToDir) throws FileDownloadException {
+    public Path extractGZFile(Path gzFile, String extractToDir) throws FileDownloadException {
         try {
             return HttpUtils.extractGZFile(gzFile, extractToDir);
         } catch (Exception e) {
-            throw new FileDownloadException("Failed to extract GZ file: " + gzFile.getName(), e);
+            throw new FileDownloadException("Failed to extract GZ file: " + gzFile.getFileName(), e);
         }
     }
 }
