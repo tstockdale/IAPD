@@ -1,18 +1,49 @@
 {
     "folders": [
         {
-            "path": "."
+            "path": ".",
+            "name": "IAPD Maven Project"
         }
     ],
     "settings": {
-        "java.project.sourcePaths": ["src"],
-        "java.project.outputPath": "bin",
-    "java.project.referencedLibraries": [],
-        "java.compile.nullAnalysis.mode": "automatic",
-        "java.configuration.updateBuildConfiguration": "interactive",
-        "java.debug.settings.onBuildFailureProceed": true,
+        // Maven Project Settings - Let VSCode auto-detect Maven structure
+        "java.configuration.maven.userSettings": null,
+        "java.import.maven.enabled": true,
+        "java.maven.downloadSources": true,
+        "java.maven.downloadJavadoc": true,
+        "java.autobuild.enabled": true,
+        
+        // Project Structure
+        "java.project.name": "IAPD",
         "files.encoding": "utf8",
-        "java.project.name": "IAPD"
+        
+        // Enhanced Maven Integration
+        "maven.executable.path": "mvn",
+        "maven.terminal.useJavaHome": true,
+        "maven.view": "hierarchical",
+        "maven.pomfile.autoUpdateEffectivePOM": true,
+        
+        // Java Language Features
+        "java.compile.nullAnalysis.mode": "automatic",
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.debug.settings.onBuildFailureProceed": true,
+        "java.saveActions.organizeImports": true,
+        "java.format.enabled": true,
+        
+        // Test Integration
+        "java.test.defaultConfig": "maven-test",
+        
+        // File Management
+        "files.exclude": {
+            "**/target": true,
+            "**/.classpath": true,
+            "**/.project": true,
+            "**/.settings": true,
+            "**/.factorypath": true
+        },
+        
+        // Performance
+        "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m"
     },
     "extensions": {
         "recommendations": [
@@ -20,7 +51,16 @@
             "redhat.java",
             "vscjava.vscode-java-debug",
             "vscjava.vscode-java-test",
-            "vscjava.vscode-maven"
+            "vscjava.vscode-maven",
+            "vscjava.vscode-java-dependency"
         ]
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "options": {
+            "env": {
+                "MAVEN_OPTS": "-Xmx1024m"
+            }
+        }
     }
 }
