@@ -281,7 +281,7 @@ public class OutputDataReaderService {
      * @param csvFile the file to count
      * @return the number of records (excluding header)
      */
-    private int countRecords(Path csvFile) {
+    public int countRecords(Path csvFile) {
         int count = 0;
         try (Reader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
             Iterable<CSVRecord> records = CSVFormat.EXCEL

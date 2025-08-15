@@ -21,6 +21,7 @@ import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.exceptions.BrochureProcessingException;
 import com.iss.iapd.services.csv.CSVWriterService;
+import com.iss.iapd.services.csv.DualFileOutputService;
 import com.iss.iapd.services.incremental.ResumeStateManager;
 import com.iss.iapd.utils.PatternMatchers;
 import com.iss.iapd.utils.PdfTextExtractor;
@@ -310,11 +311,22 @@ public class BrochureProcessingService {
             ProcessingLogger.logInfo("Brochure processing with merge completed.");
             ProcessingLogger.logInfo("Total records in FilesToDownload: " + totalRecords);
             ProcessingLogger.logInfo("Successfully processed brochures: " + processedCount);
-            ProcessingLogger.logInfo("Output file: " + outputFilePath);
+            ProcessingLogger.logInfo("Dated output file: " + outputFilePath);
             
         } catch (Exception e) {
             context.setLastError("Error in brochure processing with merge: " + e.getMessage());
             throw new BrochureProcessingException("Error in brochure processing with merge", e);
+        }
+        
+        // Process dual file output strategy (dated file + master file)
+        DualFileOutputService dualFileOutputService = new DualFileOutputService();
+        Path masterFilePath = dualFileOutputService.processDualFileOutput(outputFilePath);
+        
+        if (masterFilePath != null) {
+            ProcessingLogger.logInfo("Dual file output processing completed successfully.");
+            ProcessingLogger.logInfo("Master file: " + masterFilePath);
+        } else {
+            ProcessingLogger.logWarning("Dual file output processing failed, but dated file was created successfully.");
         }
     }
     
