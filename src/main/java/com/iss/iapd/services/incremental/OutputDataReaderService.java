@@ -7,7 +7,9 @@ import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.apache.commons.csv.CSVFormat;
@@ -33,14 +35,17 @@ public class OutputDataReaderService {
         private final Path latestFile;
         private final String maxDateSubmitted;
         private final Date maxDateSubmittedParsed;
+        private final Set<String> existingBrochureVersionIds;
         private final int totalRecords;
         private final boolean hasExistingData;
         
         public OutputDataAnalysis(Path latestFile, String maxDateSubmitted, 
-                                Date maxDateSubmittedParsed, int totalRecords, boolean hasExistingData) {
+                                Date maxDateSubmittedParsed, Set<String> existingBrochureVersionIds,
+                                int totalRecords, boolean hasExistingData) {
             this.latestFile = latestFile;
             this.maxDateSubmitted = maxDateSubmitted;
             this.maxDateSubmittedParsed = maxDateSubmittedParsed;
+            this.existingBrochureVersionIds = existingBrochureVersionIds != null ? existingBrochureVersionIds : new HashSet<>();
             this.totalRecords = totalRecords;
             this.hasExistingData = hasExistingData;
         }
@@ -48,18 +53,19 @@ public class OutputDataReaderService {
         public Path getLatestFile() { return latestFile; }
         public String getMaxDateSubmitted() { return maxDateSubmitted; }
         public Date getMaxDateSubmittedParsed() { return maxDateSubmittedParsed; }
+        public Set<String> getExistingBrochureVersionIds() { return existingBrochureVersionIds; }
         public int getTotalRecords() { return totalRecords; }
         public boolean hasExistingData() { return hasExistingData; }
         
         @Override
         public String toString() {
-            return String.format("OutputDataAnalysis{latestFile=%s, maxDateSubmitted=%s, totalRecords=%d, hasExistingData=%s}",
-                    latestFile, maxDateSubmitted, totalRecords, hasExistingData);
+            return String.format("OutputDataAnalysis{latestFile=%s, maxDateSubmitted=%s, brochureVersionIds=%d, totalRecords=%d, hasExistingData=%s}",
+                    latestFile, maxDateSubmitted, existingBrochureVersionIds.size(), totalRecords, hasExistingData);
         }
     }
     
     /**
-     * Analyzes the output directory to find the latest IAPD_DATA file and extract maximum dateSubmitted
+     * Analyzes the output directory to find the latest IAPD_DATA file and extract brochure version IDs
      * 
      * @param outputDirectory the directory containing IAPD_DATA files
      * @return OutputDataAnalysis containing the analysis results
@@ -69,14 +75,14 @@ public class OutputDataReaderService {
         
         if (!Files.exists(outputDirectory) || !Files.isDirectory(outputDirectory)) {
             ProcessingLogger.logInfo("Output directory does not exist - treating as first run");
-            return new OutputDataAnalysis(null, null, null, 0, false);
+            return new OutputDataAnalysis(null, null, null, new HashSet<>(), 0, false);
         }
         
         Optional<Path> latestFile = findLatestOutputFile(outputDirectory);
         
         if (!latestFile.isPresent()) {
             ProcessingLogger.logInfo("No IAPD_DATA files found in output directory - treating as first run");
-            return new OutputDataAnalysis(null, null, null, 0, false);
+            return new OutputDataAnalysis(null, null, null, new HashSet<>(), 0, false);
         }
         
         Path file = latestFile.get();
@@ -84,14 +90,16 @@ public class OutputDataReaderService {
         
         String maxDateSubmitted = getMaxDateSubmitted(file);
         Date maxDateSubmittedParsed = parseDate(maxDateSubmitted);
+        Set<String> existingBrochureVersionIds = getBrochureVersionIds(file);
         int totalRecords = countRecords(file);
         
         ProcessingLogger.logInfo("Output data analysis complete:");
         ProcessingLogger.logInfo("  - Latest file: " + file.getFileName());
         ProcessingLogger.logInfo("  - Max dateSubmitted: " + maxDateSubmitted);
+        ProcessingLogger.logInfo("  - Existing brochure version IDs: " + existingBrochureVersionIds.size());
         ProcessingLogger.logInfo("  - Total records: " + totalRecords);
         
-        return new OutputDataAnalysis(file, maxDateSubmitted, maxDateSubmittedParsed, totalRecords, true);
+        return new OutputDataAnalysis(file, maxDateSubmitted, maxDateSubmittedParsed, existingBrochureVersionIds, totalRecords, true);
     }
     
     /**
@@ -184,6 +192,68 @@ public class OutputDataReaderService {
         }
         
         return maxDateSubmitted;
+    }
+    
+    /**
+     * Extracts all brochureVersionIds from an IAPD_DATA CSV file
+     * 
+     * @param outputFile the CSV file to analyze
+     * @return Set of brochureVersionIds found in the file
+     */
+    public Set<String> getBrochureVersionIds(Path outputFile) {
+        Set<String> brochureVersionIds = new HashSet<>();
+        
+        if (!Files.exists(outputFile)) {
+            ProcessingLogger.logWarning("Output file does not exist: " + outputFile);
+            return brochureVersionIds;
+        }
+        
+        int recordsProcessed = 0;
+        int validVersionIds = 0;
+        
+        try (Reader reader = Files.newBufferedReader(outputFile, StandardCharsets.UTF_8)) {
+            Iterable<CSVRecord> records = CSVFormat.EXCEL
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setQuoteMode(QuoteMode.MINIMAL)
+                    .build()
+                    .parse(reader);
+            
+            for (CSVRecord record : records) {
+                recordsProcessed++;
+                try {
+                    // Look for brochureVersionId column - it might be in different positions
+                    String brochureVersionId = null;
+                    
+                    // Try common column names for brochureVersionId
+                    if (record.isMapped("brochureVersionId")) {
+                        brochureVersionId = record.get("brochureVersionId");
+                    } else if (record.isMapped("BrochureVersionId")) {
+                        brochureVersionId = record.get("BrochureVersionId");
+                    } else if (record.isMapped("brochure_version_id")) {
+                        brochureVersionId = record.get("brochure_version_id");
+                    }
+                    
+                    if (brochureVersionId != null && !brochureVersionId.trim().isEmpty()) {
+                        brochureVersionIds.add(brochureVersionId.trim());
+                        validVersionIds++;
+                    }
+                } catch (Exception e) {
+                    // Skip malformed records
+                    ProcessingLogger.logWarning("Skipping malformed record in output file: " + e.getMessage());
+                }
+            }
+            
+            ProcessingLogger.logInfo("Processed " + recordsProcessed + " records from output file");
+            ProcessingLogger.logInfo("Found " + validVersionIds + " valid brochureVersionId values");
+            ProcessingLogger.logInfo("Unique brochureVersionIds: " + brochureVersionIds.size());
+            
+        } catch (Exception e) {
+            ProcessingLogger.logError("Error reading brochureVersionIds from output file: " + outputFile, e);
+        }
+        
+        return brochureVersionIds;
     }
     
     /**

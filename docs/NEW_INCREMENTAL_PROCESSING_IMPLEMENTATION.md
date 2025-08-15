@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the implementation of a new incremental processing approach that filters brochures based on `dateSubmitted` values rather than firm-level filing dates. This approach provides more granular control and better efficiency for incremental updates.
+This document describes the implementation of a new incremental processing approach that filters brochures based on `brochureVersionId` values rather than date-based filtering. This approach provides more precise control and better efficiency for incremental updates by tracking exactly which brochure versions have been processed.
 
 ## New Approach vs. Previous Approach
 
@@ -12,10 +12,10 @@ This document describes the implementation of a new incremental processing appro
 - Processed entire firms if any change was detected
 - Created separate incremental output files
 
-### New Approach
-- Filters at the **brochure level** based on `dateSubmitted`
-- Reads existing output data to find maximum `dateSubmitted`
-- Only processes brochures with `dateSubmitted > maxDateSubmitted`
+### New Approach (Updated)
+- Filters at the **brochure level** based on `brochureVersionId`
+- Reads existing output data to extract all processed `brochureVersionIds`
+- Only processes brochures with `brochureVersionId` NOT in the existing set
 - Appends new results to existing output files and renames with current date
 
 ## Implementation Components
@@ -26,15 +26,15 @@ This document describes the implementation of a new incremental processing appro
 
 **Key Features**:
 - Analyzes output directory to find latest IAPD_DATA files
-- Extracts maximum `dateSubmitted` from existing data
-- Provides date comparison utilities
+- Extracts all `brochureVersionIds` from existing data
+- Provides version ID comparison utilities
 - Handles first-run scenarios (no existing data)
 
 **Key Methods**:
 ```java
 public OutputDataAnalysis analyzeOutputDirectory(Path outputDirectory)
-public String getMaxDateSubmitted(Path outputFile)
-public boolean isDateMoreRecent(String dateSubmitted, String maxDateSubmitted)
+public Set<String> getBrochureVersionIds(Path outputFile)
+public String getMaxDateSubmitted(Path outputFile) // Legacy support
 ```
 
 ### 2. Enhanced ProcessingContext
@@ -42,12 +42,12 @@ public boolean isDateMoreRecent(String dateSubmitted, String maxDateSubmitted)
 **Location**: `src/main/java/com/iss/iapd/core/ProcessingContext.java`
 
 **New Fields**:
-- `maxDateSubmitted`: The maximum date found in existing output data
+- `existingBrochureVersionIds`: Set of brochure version IDs found in existing output data
 - `hasExistingOutputData`: Boolean indicating if existing data was found
 
 **New Builder Methods**:
 ```java
-public Builder maxDateSubmitted(String maxDateSubmitted)
+public Builder existingBrochureVersionIds(Set<String> existingBrochureVersionIds)
 public Builder hasExistingOutputData(boolean hasExistingOutputData)
 ```
 
@@ -57,17 +57,16 @@ public Builder hasExistingOutputData(boolean hasExistingOutputData)
 
 **Key Changes**:
 - Added incremental filtering logic in `parseFirmAPIResponse()`
-- Filters brochures based on `dateSubmitted > maxDateSubmitted`
+- Filters brochures based on `brochureVersionId` NOT in existing set
 - Enhanced logging for incremental processing statistics
 - Tracks filtered vs. included brochures
 
 **Filtering Logic**:
 ```java
-// Apply incremental filtering if maxDateSubmitted is available
+// Apply incremental filtering if existing brochure version IDs are available
 boolean shouldInclude = true;
-if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
-    OutputDataReaderService outputReader = new OutputDataReaderService();
-    shouldInclude = outputReader.isDateMoreRecent(dateSubmitted, context.getMaxDateSubmitted());
+if (context.hasExistingOutputData() && !context.getExistingBrochureVersionIds().isEmpty()) {
+    shouldInclude = !context.getExistingBrochureVersionIds().contains(brochureVersionId);
     
     if (!shouldInclude) {
         brochuresFiltered++;
@@ -82,7 +81,7 @@ if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
 1. Check if output directory exists and contains IAPD_DATA files
 2. If existing data found:
    - Find the latest IAPD_DATA file
-   - Extract maximum `dateSubmitted` value
+   - Extract all `brochureVersionIds` from existing data
    - Set `hasExistingOutputData = true` in ProcessingContext
 3. If no existing data:
    - Set `hasExistingOutputData = false`
@@ -95,13 +94,13 @@ if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
 ### 3. Brochure URL Extraction Phase
 - For each firm, call FIRM_API to get brochure details
 - For each brochure found:
-  - Check if `dateSubmitted > maxDateSubmitted`
+  - Check if `brochureVersionId` NOT in existing set
   - If yes: include in FilesToDownload output
-  - If no: filter out (skip)
+  - If no: filter out (skip) - already processed
 - Log filtering statistics
 
 ### 4. Brochure Analysis Phase
-- Process only the brochures that passed the dateSubmitted filter
+- Process only the brochures that passed the VersionId filter
 - Append results to existing output data file
 - Rename final file with current date
 
@@ -110,26 +109,26 @@ if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
 ### Command Line Integration
 The new incremental processing is automatically enabled when:
 - Output directory contains existing IAPD_DATA files
-- The latest file has valid `dateSubmitted` data
+- The latest file has valid `brochureVersionId` data
 
 ### Logging and Monitoring
 Enhanced logging provides detailed information about:
 - Output data analysis results
-- Maximum `dateSubmitted` found
+- Number of existing `brochureVersionIds` found
 - Number of brochures filtered vs. included per firm
 - Overall incremental processing statistics
 
 ### Example Log Output
 ```
-=== OUTPUT DATA ANALYSIS ===
-Latest file: IAPD_DATA_20250814.csv
-Max dateSubmitted: 08/10/2025
-Total records: 15,432
-Incremental processing enabled
+=== INCREMENTAL PROCESSING ENABLED ===
+Found existing output data: IAPD_DATA_20250814.csv
+Existing brochure version IDs: 15,432
+Total existing records: 15,432
+Incremental processing will filter brochures with existing brochureVersionIds
 
 === BROCHURE FILTERING ===
-Firm 12345 - Total brochures found: 3, Filtered (older): 2, Included (newer): 1
-Firm 67890 - Total brochures found: 1, Filtered (older): 0, Included (newer): 1
+Firm 12345 - Total brochures found: 3, Filtered (existing): 2, Included (new): 1
+Firm 67890 - Total brochures found: 1, Filtered (existing): 0, Included (new): 1
 ```
 
 ## Benefits

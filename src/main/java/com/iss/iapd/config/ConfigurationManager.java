@@ -155,17 +155,17 @@ public class ConfigurationManager {
             if (analysis.hasExistingData()) {
                 ProcessingLogger.logInfo("=== INCREMENTAL PROCESSING ENABLED ===");
                 ProcessingLogger.logInfo("Found existing output data: " + analysis.getLatestFile().getFileName());
-                ProcessingLogger.logInfo("Maximum dateSubmitted: " + analysis.getMaxDateSubmitted());
+                ProcessingLogger.logInfo("Existing brochure version IDs: " + analysis.getExistingBrochureVersionIds().size());
                 ProcessingLogger.logInfo("Total existing records: " + analysis.getTotalRecords());
                 
                 // Set incremental processing parameters
-                builder.maxDateSubmitted(analysis.getMaxDateSubmitted())
+                builder.existingBrochureVersionIds(analysis.getExistingBrochureVersionIds())
                        .hasExistingOutputData(true);
                        
-                ProcessingLogger.logInfo("Incremental processing will filter brochures with dateSubmitted > " + analysis.getMaxDateSubmitted());
+                ProcessingLogger.logInfo("Incremental processing will filter brochures with existing brochureVersionIds");
             } else {
                 ProcessingLogger.logInfo("No existing output data found - running in full processing mode");
-                builder.maxDateSubmitted(null)
+                builder.existingBrochureVersionIds(null)
                        .hasExistingOutputData(false);
             }
             
@@ -174,7 +174,7 @@ public class ConfigurationManager {
             ProcessingLogger.logWarning("Falling back to full processing mode");
             
             // Fall back to full processing mode
-            builder.maxDateSubmitted(null)
+            builder.existingBrochureVersionIds(null)
                    .hasExistingOutputData(false);
         }
     }
@@ -330,7 +330,7 @@ public class ConfigurationManager {
         // Incremental processing information
         if (context.hasExistingOutputData()) {
             System.out.println("Incremental Processing: ENABLED");
-            System.out.println("Max Date Submitted: " + context.getMaxDateSubmitted());
+            System.out.println("Existing Brochure Version IDs: " + context.getExistingBrochureVersionIds().size());
         } else {
             System.out.println("Incremental Processing: DISABLED (no existing data)");
         }

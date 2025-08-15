@@ -249,17 +249,16 @@ public class BrochureURLExtractionService {
                             if (!brochureVersionId.isEmpty() && !brochureName.isEmpty() && !dateSubmitted.isEmpty()) {
                                 totalBrochuresFound++;
                                 
-                                // Apply incremental filtering if maxDateSubmitted is available
+                                // Apply incremental filtering if existing brochure version IDs are available
                                 boolean shouldInclude = true;
-                                if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
-                                    OutputDataReaderService outputReader = new OutputDataReaderService();
-                                    shouldInclude = outputReader.isDateMoreRecent(dateSubmitted, context.getMaxDateSubmitted());
+                                if (context.hasExistingOutputData() && !context.getExistingBrochureVersionIds().isEmpty()) {
+                                    shouldInclude = !context.getExistingBrochureVersionIds().contains(brochureVersionId);
                                     
                                     if (!shouldInclude) {
                                         brochuresFiltered++;
                                         if (context.isVerbose()) {
                                             ProcessingLogger.logInfo("Filtered brochure for firm " + firmCrdNb + 
-                                                " - dateSubmitted: " + dateSubmitted + " <= maxDateSubmitted: " + context.getMaxDateSubmitted());
+                                                " - brochureVersionId: " + brochureVersionId + " already exists in output data");
                                         }
                                     }
                                 }
@@ -282,9 +281,9 @@ public class BrochureURLExtractionService {
             }
             
             // Enhanced logging for incremental processing
-            if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
+            if (context.hasExistingOutputData() && !context.getExistingBrochureVersionIds().isEmpty()) {
                 ProcessingLogger.logInfo("Firm " + firmCrdNb + " - Total brochures found: " + totalBrochuresFound + 
-                    ", Filtered (older): " + brochuresFiltered + ", Included (newer): " + brochures.size());
+                    ", Filtered (existing): " + brochuresFiltered + ", Included (new): " + brochures.size());
             } else {
                 if (brochures.isEmpty()) {
                     ProcessingLogger.logWarning("No brochure details found in API response for firm: " + firmCrdNb);

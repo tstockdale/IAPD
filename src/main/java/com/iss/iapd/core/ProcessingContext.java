@@ -1,6 +1,8 @@
 package com.iss.iapd.core;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,7 +37,7 @@ public class ProcessingContext {
     private final int urlRatePerSecond;
     private final int downloadRatePerSecond;
     // Incremental processing configuration
-    private final String maxDateSubmitted;
+    private final Set<String> existingBrochureVersionIds;
     private final boolean hasExistingOutputData;
     
     // Runtime State (mutable, thread-safe)
@@ -69,7 +71,8 @@ public class ProcessingContext {
         this.processingStartTime.set(System.currentTimeMillis());
         this.urlRatePerSecond = builder.urlRatePerSecond;
         this.downloadRatePerSecond = builder.downloadRatePerSecond;
-        this.maxDateSubmitted = builder.maxDateSubmitted;
+        this.existingBrochureVersionIds = builder.existingBrochureVersionIds != null ? 
+            new HashSet<>(builder.existingBrochureVersionIds) : new HashSet<>();
         this.hasExistingOutputData = builder.hasExistingOutputData;
     }
     
@@ -92,7 +95,7 @@ public class ProcessingContext {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public int getURLRatePerSecond() { return urlRatePerSecond; }
     public int getDownloadRatePerSecond() { return downloadRatePerSecond; }
-    public String getMaxDateSubmitted() { return maxDateSubmitted; }
+    public Set<String> getExistingBrochureVersionIds() { return existingBrochureVersionIds; }
     public boolean hasExistingOutputData() { return hasExistingOutputData; }
     
     // Runtime state getters
@@ -184,7 +187,7 @@ public class ProcessingContext {
         private String configSource = "builder";
         private int urlRatePerSecond = 1;
         private int downloadRatePerSecond = 1;
-        private String maxDateSubmitted = null;
+        private Set<String> existingBrochureVersionIds = null;
         private boolean hasExistingOutputData = false;
         
         public Builder indexLimit(int indexLimit) {
@@ -289,8 +292,8 @@ public class ProcessingContext {
             return this;
         }
         
-        public Builder maxDateSubmitted(String maxDateSubmitted) {
-            this.maxDateSubmitted = maxDateSubmitted;
+        public Builder existingBrochureVersionIds(Set<String> existingBrochureVersionIds) {
+            this.existingBrochureVersionIds = existingBrochureVersionIds;
             return this;
         }
         
