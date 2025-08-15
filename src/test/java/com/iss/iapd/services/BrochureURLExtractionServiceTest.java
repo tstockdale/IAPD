@@ -2,17 +2,14 @@ package com.iss.iapd.services;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Path;
+
 
 import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.services.brochure.BrochureURLExtractionService;
-import com.iss.iapd.services.brochure.BrochureAnalyzer;
 
 /**
  * Test class for BrochureURLExtractionService

@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import com.iss.iapd.config.ProcessingLogger;
 
 /**
  * Comprehensive JUnit 5 test suite for ProcessingLogger

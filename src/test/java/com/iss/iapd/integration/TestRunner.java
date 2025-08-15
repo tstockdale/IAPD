@@ -7,14 +7,12 @@ import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectPackage;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
 import com.iss.iapd.services.BrochureAnalyzerTest;
 import com.iss.iapd.config.ProcessingLoggerTest;
 import com.iss.iapd.config.CommandLineOptionsTest;
 import com.iss.iapd.utils.RetryUtilsTest;
-import com.iss.iapd.integration.FirmDataBuilderTest;
 
 
 

@@ -4,7 +4,6 @@ import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.config.CommandLineOptions;
 import com.iss.iapd.config.ConfigurationManager;
 import com.iss.iapd.model.ProcessingPhase;
-import com.iss.iapd.config.Config;
 
 /**
  * Test runner for the fixed JUnit 5 tests
