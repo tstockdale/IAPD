@@ -23,6 +23,9 @@ public final class Config {
     public static final String BROCHURE_URL_BASE = "https://files.adviserinfo.sec.gov/IAPD/Content/Common/crd_iapd_Brochure.aspx?BRCHR_VRSN_ID=";
     public static final String BROCHURE_MONTHLY_URL_FORMAT = "https://reports.adviserinfo.sec.gov/reports/foia/advBrochures/2025/ADV_Brochures_2025_%s.zip";
 
+    // Output file naming
+    public static final String OUTPUT_FILE_BASE_NAME = "IAPD_Data";
+    
     // CSV headers
     public static final String FIRM_HEADER = "dateAdded,SECRgmCD,FirmCrdNb,SECMb,Business Name,Legal Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Fax #,Registration Firm Type,Registration State,Registration Date,Filing Date,Filing Version,Total Employees,AUM,Total Accounts,BrochureURL";
     public static final String IAPD_DATA_HEADER = "dateAdded,SECRgmCD,FirmCrdNb,SECMb,Business Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Filing Date,AUM,Total Accounts,Total Employees,Proxy Provider, Class Action Provider,ESG Provider, ESG Investment Language, File Name,Brochure URL,Email -- Compliance,Email -- Proxy,Email -- Brochure,Email -- Item 17,Email -- All,Does Not Vote String";

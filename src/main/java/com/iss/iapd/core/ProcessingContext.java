@@ -34,6 +34,9 @@ public class ProcessingContext {
     // Rate limiting configuration
     private final int urlRatePerSecond;
     private final int downloadRatePerSecond;
+    // Incremental processing configuration
+    private final String maxDateSubmitted;
+    private final boolean hasExistingOutputData;
     
     // Runtime State (mutable, thread-safe)
     private final AtomicInteger processedFirms = new AtomicInteger(0);
@@ -64,8 +67,10 @@ public class ProcessingContext {
         this.configSource = builder.configSource;
         this.createdAt = LocalDateTime.now();
         this.processingStartTime.set(System.currentTimeMillis());
-    this.urlRatePerSecond = builder.urlRatePerSecond;
-    this.downloadRatePerSecond = builder.downloadRatePerSecond;
+        this.urlRatePerSecond = builder.urlRatePerSecond;
+        this.downloadRatePerSecond = builder.downloadRatePerSecond;
+        this.maxDateSubmitted = builder.maxDateSubmitted;
+        this.hasExistingOutputData = builder.hasExistingOutputData;
     }
     
     // Configuration getters
@@ -87,6 +92,8 @@ public class ProcessingContext {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public int getURLRatePerSecond() { return urlRatePerSecond; }
     public int getDownloadRatePerSecond() { return downloadRatePerSecond; }
+    public String getMaxDateSubmitted() { return maxDateSubmitted; }
+    public boolean hasExistingOutputData() { return hasExistingOutputData; }
     
     // Runtime state getters
     public int getProcessedFirms() { return processedFirms.get(); }
@@ -175,8 +182,10 @@ public class ProcessingContext {
         private String baselineFilePath = null;
         private String monthName = null;
         private String configSource = "builder";
-    private int urlRatePerSecond = 1;
-    private int downloadRatePerSecond = 1;
+        private int urlRatePerSecond = 1;
+        private int downloadRatePerSecond = 1;
+        private String maxDateSubmitted = null;
+        private boolean hasExistingOutputData = false;
         
         public Builder indexLimit(int indexLimit) {
             // Treat non-positive values as "unlimited"
@@ -277,6 +286,16 @@ public class ProcessingContext {
                 throw new IllegalArgumentException("downloadRatePerSecond must be > 0");
             }
             this.downloadRatePerSecond = rate;
+            return this;
+        }
+        
+        public Builder maxDateSubmitted(String maxDateSubmitted) {
+            this.maxDateSubmitted = maxDateSubmitted;
+            return this;
+        }
+        
+        public Builder hasExistingOutputData(boolean hasExistingOutputData) {
+            this.hasExistingOutputData = hasExistingOutputData;
             return this;
         }
         

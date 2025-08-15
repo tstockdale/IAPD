@@ -26,6 +26,7 @@ import com.iss.iapd.exceptions.BrochureProcessingException;
 import com.iss.iapd.utils.RetryUtils;
 import com.iss.iapd.config.Config;
 import com.iss.iapd.utils.HttpUtils;
+import com.iss.iapd.services.incremental.OutputDataReaderService;
 
 /**
  * Service class responsible for extracting brochure URLs from FIRM_API JSON responses
@@ -186,7 +187,7 @@ public class BrochureURLExtractionService {
             }, "Extract brochures from FIRM_API for firm " + firmCrdNb);
             
             if (jsonResponse != null && !jsonResponse.trim().isEmpty()) {
-                brochures = parseFirmAPIResponse(jsonResponse, firmCrdNb, firmName);
+                brochures = parseFirmAPIResponse(jsonResponse, firmCrdNb, firmName, context);
             } else {
                 ProcessingLogger.logWarning("Empty or null response from FIRM_API for firm: " + firmCrdNb);
             }
@@ -201,9 +202,12 @@ public class BrochureURLExtractionService {
     /**
      * Parses the FIRM_API JSON response and extracts brochure information
      * Uses Jackson ObjectMapper for robust JSON parsing
+     * Filters brochures based on incremental processing logic if maxDateSubmitted is available
      */
-    private List<BrochureDownloadRecord> parseFirmAPIResponse(String jsonResponse, String firmCrdNb, String firmName) {
+    private List<BrochureDownloadRecord> parseFirmAPIResponse(String jsonResponse, String firmCrdNb, String firmName, ProcessingContext context) {
         List<BrochureDownloadRecord> brochures = new ArrayList<>();
+        int totalBrochuresFound = 0;
+        int brochuresFiltered = 0;
         
         try {
             JsonNode rootNode = objectMapper.readTree(jsonResponse);
@@ -243,25 +247,50 @@ public class BrochureURLExtractionService {
                             
                             // Only create record if we have the essential fields
                             if (!brochureVersionId.isEmpty() && !brochureName.isEmpty() && !dateSubmitted.isEmpty()) {
-                                BrochureDownloadRecord record = new BrochureDownloadRecord(
-                                    finalFirmId,
-                                    finalFirmName,
-                                    brochureVersionId,
-                                    brochureName,
-                                    dateSubmitted,
-                                    lastConfirmed
-                                );
-                                brochures.add(record);
+                                totalBrochuresFound++;
+                                
+                                // Apply incremental filtering if maxDateSubmitted is available
+                                boolean shouldInclude = true;
+                                if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
+                                    OutputDataReaderService outputReader = new OutputDataReaderService();
+                                    shouldInclude = outputReader.isDateMoreRecent(dateSubmitted, context.getMaxDateSubmitted());
+                                    
+                                    if (!shouldInclude) {
+                                        brochuresFiltered++;
+                                        if (context.isVerbose()) {
+                                            ProcessingLogger.logInfo("Filtered brochure for firm " + firmCrdNb + 
+                                                " - dateSubmitted: " + dateSubmitted + " <= maxDateSubmitted: " + context.getMaxDateSubmitted());
+                                        }
+                                    }
+                                }
+                                
+                                if (shouldInclude) {
+                                    BrochureDownloadRecord record = new BrochureDownloadRecord(
+                                        finalFirmId,
+                                        finalFirmName,
+                                        brochureVersionId,
+                                        brochureName,
+                                        dateSubmitted,
+                                        lastConfirmed
+                                    );
+                                    brochures.add(record);
+                                }
                             }
                         }
                     }
                 }
             }
             
-            if (brochures.isEmpty()) {
-                ProcessingLogger.logWarning("No brochure details found in API response for firm: " + firmCrdNb);
+            // Enhanced logging for incremental processing
+            if (context.hasExistingOutputData() && context.getMaxDateSubmitted() != null) {
+                ProcessingLogger.logInfo("Firm " + firmCrdNb + " - Total brochures found: " + totalBrochuresFound + 
+                    ", Filtered (older): " + brochuresFiltered + ", Included (newer): " + brochures.size());
             } else {
-                ProcessingLogger.logInfo("Found " + brochures.size() + " brochures for firm: " + firmCrdNb);
+                if (brochures.isEmpty()) {
+                    ProcessingLogger.logWarning("No brochure details found in API response for firm: " + firmCrdNb);
+                } else {
+                    ProcessingLogger.logInfo("Found " + brochures.size() + " brochures for firm: " + firmCrdNb);
+                }
             }
             
         } catch (Exception e) {

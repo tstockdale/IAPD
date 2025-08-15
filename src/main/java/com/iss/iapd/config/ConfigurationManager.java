@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.util.Properties;
 
 import com.iss.iapd.core.ProcessingContext;
+import com.iss.iapd.services.incremental.OutputDataReaderService;
 
 /**
  * Manages configuration from multiple sources with priority ordering:
@@ -38,6 +39,9 @@ public class ConfigurationManager {
             
             // Layer 3: Command line arguments (highest priority)
             applyCommandLineConfiguration(builder, args);
+            
+            // Layer 4: Analyze existing output data for incremental processing
+            applyIncrementalProcessingConfiguration(builder);
             
             return builder.build();
             
@@ -134,6 +138,44 @@ public class ConfigurationManager {
             }
             
             builder.configSource("file");
+        }
+    }
+    
+    /**
+     * Analyzes existing output data for incremental processing configuration
+     */
+    private void applyIncrementalProcessingConfiguration(ProcessingContext.Builder builder) {
+        try {
+            // Analyze existing output data to determine incremental processing parameters
+            OutputDataReaderService outputReader = new OutputDataReaderService();
+            Path outputDirectory = Paths.get(Config.BROCHURE_OUTPUT_PATH);
+            
+            OutputDataReaderService.OutputDataAnalysis analysis = outputReader.analyzeOutputDirectory(outputDirectory);
+            
+            if (analysis.hasExistingData()) {
+                ProcessingLogger.logInfo("=== INCREMENTAL PROCESSING ENABLED ===");
+                ProcessingLogger.logInfo("Found existing output data: " + analysis.getLatestFile().getFileName());
+                ProcessingLogger.logInfo("Maximum dateSubmitted: " + analysis.getMaxDateSubmitted());
+                ProcessingLogger.logInfo("Total existing records: " + analysis.getTotalRecords());
+                
+                // Set incremental processing parameters
+                builder.maxDateSubmitted(analysis.getMaxDateSubmitted())
+                       .hasExistingOutputData(true);
+                       
+                ProcessingLogger.logInfo("Incremental processing will filter brochures with dateSubmitted > " + analysis.getMaxDateSubmitted());
+            } else {
+                ProcessingLogger.logInfo("No existing output data found - running in full processing mode");
+                builder.maxDateSubmitted(null)
+                       .hasExistingOutputData(false);
+            }
+            
+        } catch (Exception e) {
+            ProcessingLogger.logWarning("Error analyzing existing output data for incremental processing: " + e.getMessage());
+            ProcessingLogger.logWarning("Falling back to full processing mode");
+            
+            // Fall back to full processing mode
+            builder.maxDateSubmitted(null)
+                   .hasExistingOutputData(false);
         }
     }
     
@@ -282,8 +324,17 @@ public class ConfigurationManager {
         System.out.println("Output Format: " + context.getOutputFormat());
         System.out.println("Retry Count: " + context.getRetryCount());
         System.out.println("Skip Brochure Download: " + context.isSkipBrochureDownload());
-    System.out.println("XML Rate (ops/sec): " + context.getURLRatePerSecond());
-    System.out.println("Download Rate (ops/sec): " + context.getDownloadRatePerSecond());
+        System.out.println("XML Rate (ops/sec): " + context.getURLRatePerSecond());
+        System.out.println("Download Rate (ops/sec): " + context.getDownloadRatePerSecond());
+        
+        // Incremental processing information
+        if (context.hasExistingOutputData()) {
+            System.out.println("Incremental Processing: ENABLED");
+            System.out.println("Max Date Submitted: " + context.getMaxDateSubmitted());
+        } else {
+            System.out.println("Incremental Processing: DISABLED (no existing data)");
+        }
+        
         System.out.println("Created At: " + context.getCreatedAt());
         System.out.println("===============================");
     }
