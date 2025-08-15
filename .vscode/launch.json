@@ -1,0 +1,60 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Debug IAPD Application",
+            "request": "launch",
+            "mainClass": "IAFirmSECParserRefactored",
+            "projectName": "iapd",
+            "args": [],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "vmArgs": "-Xmx2G -Dfile.encoding=UTF-8",
+            "env": {},
+            "envFile": "${workspaceFolder}/.env",
+            "preLaunchTask": "maven: compile"
+        },
+        {
+            "type": "java",
+            "name": "Debug IAPD with Arguments",
+            "request": "launch",
+            "mainClass": "IAFirmSECParserRefactored",
+            "projectName": "iapd",
+            "args": ["${input:debugArgs}"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "vmArgs": "-Xmx2G -Dfile.encoding=UTF-8",
+            "env": {},
+            "envFile": "${workspaceFolder}/.env",
+            "preLaunchTask": "maven: compile"
+        },
+        {
+            "type": "java",
+            "name": "Debug Current Test",
+            "request": "launch",
+            "mainClass": "",
+            "projectName": "iapd",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "vmArgs": "-Xmx1G",
+            "preLaunchTask": "maven: test-compile"
+        },
+        {
+            "type": "java",
+            "name": "Attach to Remote JVM",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005,
+            "projectName": "iapd"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "debugArgs",
+            "description": "Enter application arguments for debugging",
+            "default": "--help",
+            "type": "promptString"
+        }
+    ]
+}

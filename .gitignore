@@ -26,13 +26,6 @@ build/
 hs_err_pid*
 replay_pid*
 
-# IDE specific files
-.vscode/
-.idea/
-*.iml
-*.ipr
-*.iws
-
 # Eclipse specific files
 .metadata
 .classpath

@@ -1,0 +1,76 @@
+{
+    // Maven Project Configuration
+    "java.configuration.maven.userSettings": null,
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.maven.downloadSources": true,
+    "java.maven.downloadJavadoc": true,
+    "java.import.maven.enabled": true,
+    "java.autobuild.enabled": true,
+    
+    // Java Language Server Settings
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.debug.settings.onBuildFailureProceed": true,
+    "java.saveActions.organizeImports": true,
+    "java.format.enabled": true,
+    "java.format.onType.enabled": true,
+    "java.clean.workspace": false,
+    "java.configuration.runtimes": [],
+    "java.import.gradle.enabled": false,
+    "java.import.exclusions": [
+        "**/node_modules/**",
+        "**/.metadata/**",
+        "**/archetype-resources/**",
+        "**/META-INF/maven/**"
+    ],
+    
+    // Enhanced Maven Integration
+    "java.project.referencedLibraries": [],
+    "java.project.sourcePaths": [],
+    "java.project.outputPath": "",
+    "java.configuration.workspaceCacheLimit": 90,
+    
+    // Test Configuration
+    "java.test.config": {
+        "name": "maven-test",
+        "workingDirectory": "${workspaceFolder}",
+        "args": [],
+        "vmArgs": [],
+        "env": {},
+        "envFile": ""
+    },
+    "java.test.defaultConfig": "maven-test",
+    
+    // File and Editor Settings
+    "files.encoding": "utf8",
+    "files.exclude": {
+        "**/target": true,
+        "**/.classpath": true,
+        "**/.project": true,
+        "**/.settings": true,
+        "**/.factorypath": true
+    },
+    
+    // Maven Integration
+    "maven.executable.path": "mvn",
+    "maven.terminal.useJavaHome": true,
+    "maven.view": "hierarchical",
+    
+    // Code Completion and IntelliSense
+    "java.completion.enabled": true,
+    "java.completion.overwrite": true,
+    "java.completion.guessMethodArguments": true,
+    "java.completion.favoriteStaticMembers": [
+        "org.junit.jupiter.api.Assertions.*",
+        "org.junit.jupiter.api.Assumptions.*",
+        "org.junit.jupiter.api.DynamicContainer.*",
+        "org.junit.jupiter.api.DynamicTest.*"
+    ],
+    
+    // Error and Warning Display
+    "java.errors.incompleteClasspath.severity": "warning",
+    "java.dependency.showMembers": true,
+    "java.dependency.syncWithFolderExplorer": true,
+    
+    // Performance Settings
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m"
+}
