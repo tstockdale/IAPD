@@ -20,7 +20,7 @@
     <shade.plugin.version>3.5.1</shade.plugin.version>
     <surefire.plugin.version>3.2.5</surefire.plugin.version>
   <!-- Default install directory (override with -Dinstall.dir=...) -->
-  <install.dir>C:/Users/stoctom/Work/IAPD</install.dir>
+    <install.dir>${user.home}/Work/IAPD</install.dir>
   </properties>
 
   <dependencies>
