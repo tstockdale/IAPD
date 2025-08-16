@@ -45,7 +45,6 @@ public class BrochureAnalyzer {
         
         // Apply all analysis strategies
         for (AnalysisStrategy strategy : strategies) {
-        	ProcessingLogger.logProviderMatch("Executing strategy: " + strategy.toString());
             strategy.analyze(text, analysis);
         }
         
