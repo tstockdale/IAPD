@@ -252,66 +252,92 @@ public class BrochureProcessingService {
     }
     
     /**
-     * Processes brochures with data merging - processes each record in filesToDownloadWithStatus
-     * and outputs all fields from filesToDownloadWithStatus plus brochure analysis fields
-     * @param firmDataFile path to original firm data CSV file (not used in current implementation)
+     * Processes brochures with data merging - merges firm data from IAPD_SEC_DATA with brochure analysis
+     * @param firmDataFile path to original firm data CSV file (IAPD_SEC_DATA with all XML fields)
      * @param filesToDownloadWithStatus path to FilesToDownload file with download status
      * @param context processing context containing configuration and runtime state
      * @throws BrochureProcessingException if processing fails
      */
     public void processBrochuresWithMerge(Path firmDataFile, Path filesToDownloadWithStatus, ProcessingContext context) throws BrochureProcessingException {
         ProcessingLogger.logInfo("Starting brochure processing with data merge");
-        ProcessingLogger.logInfo("Processing records from: " + filesToDownloadWithStatus);
+        ProcessingLogger.logInfo("Firm data file: " + firmDataFile);
+        ProcessingLogger.logInfo("FilesToDownload file: " + filesToDownloadWithStatus);
         
         // Create output file path for IAPD_Data
         String outputFileName = "IAPD_Data_" + java.time.LocalDate.now().toString().replace("-", "") + ".csv";
         Path outputFilePath = Paths.get(Config.BROCHURE_OUTPUT_PATH, outputFileName);
         
-        try (Reader reader = Files.newBufferedReader(filesToDownloadWithStatus, StandardCharsets.UTF_8);
-             BufferedWriter writer = Files.newBufferedWriter(outputFilePath, StandardCharsets.UTF_8)) {
+        try {
+            // Load firm data map (keyed by FirmCrdNb) - contains all XML data
+            java.util.Map<String, CSVRecord> firmDataMap = loadFirmDataMap(firmDataFile);
+            ProcessingLogger.logInfo("Loaded " + firmDataMap.size() + " firm records from IAPD_SEC_DATA file");
             
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setQuoteMode(QuoteMode.MINIMAL)
-                    .build()
-                    .parse(reader);
+            // Load download info map (keyed by firmId) - contains brochure download info (now supports multiple brochures per firm)
+            java.util.Map<String, java.util.List<DownloadInfo>> downloadInfoMap = loadDownloadInfoMap(filesToDownloadWithStatus);
             
-            // Write header for IAPD_Data (FilesToDownload fields + brochure analysis fields)
-            writeIAPDDataHeader(writer);
+            // Calculate total brochures across all firms
+            int totalBrochures = downloadInfoMap.values().stream().mapToInt(java.util.List::size).sum();
+            ProcessingLogger.logInfo("Loaded " + downloadInfoMap.size() + " firms with " + totalBrochures + " total brochures from FilesToDownload file");
             
-            int processedCount = 0;
-            int totalRecords = 0;
-            
-            for (CSVRecord csvRecord : records) {
-                totalRecords++;
-                String downloadStatus = csvRecord.get("downloadStatus");
-                String fileName = csvRecord.get("fileName");
+            try (BufferedWriter writer = Files.newBufferedWriter(outputFilePath, StandardCharsets.UTF_8)) {
+                // Write standardized IAPD_Data header
+                writeIAPDDataHeader(writer);
                 
-                // Process only successfully downloaded brochures
-                if ("SUCCESS".equals(downloadStatus) && fileName != null && !fileName.isEmpty()) {
-                    processSingleBrochureFromFilesToDownload(csvRecord, writer, context);
-                    processedCount++;
+                int processedCount = 0;
+                int totalRecords = 0;
+                int matchedRecords = 0;
+                
+                // Process each firm and all its brochures
+                for (java.util.Map.Entry<String, java.util.List<DownloadInfo>> entry : downloadInfoMap.entrySet()) {
+                    String firmId = entry.getKey();
+                    java.util.List<DownloadInfo> brochures = entry.getValue();
                     
-                    // Log progress periodically if verbose
-                    if (context.isVerbose() && processedCount % 50 == 0) {
-                        ProcessingLogger.logInfo("Processed " + processedCount + " brochures so far...");
-                        context.logCurrentState();
-                    }
-                } else {
-                    // Log skipped records if verbose
-                    if (context.isVerbose()) {
-                        String firmId = csvRecord.get("firmId");
-                        ProcessingLogger.logInfo("Skipping firm " + firmId + " - download status: " + downloadStatus + ", fileName: " + fileName);
+                    // Find matching firm data record once per firm
+                    CSVRecord firmRecord = firmDataMap.get(firmId);
+                    
+                    if (firmRecord != null) {
+                        // Process each brochure for this firm
+                        for (DownloadInfo downloadInfo : brochures) {
+                            totalRecords++;
+                            
+                            // Only process successfully downloaded brochures
+                            if ("SUCCESS".equals(downloadInfo.downloadStatus) && 
+                                downloadInfo.fileName != null && !downloadInfo.fileName.isEmpty()) {
+                                
+                                matchedRecords++;
+                                processSingleBrochureWithMerge(firmRecord, downloadInfo, writer, context);
+                                processedCount++;
+                                
+                                // Log progress periodically if verbose
+                                if (context.isVerbose() && processedCount % 50 == 0) {
+                                    ProcessingLogger.logInfo("Processed " + processedCount + " brochures so far...");
+                                    context.logCurrentState();
+                                }
+                            } else {
+                                // Log skipped records if verbose
+                                if (context.isVerbose()) {
+                                    ProcessingLogger.logInfo("Skipping brochure for firm " + downloadInfo.firmId + 
+                                        " - download status: " + downloadInfo.downloadStatus + 
+                                        ", fileName: " + downloadInfo.fileName);
+                                }
+                            }
+                        }
+                    } else {
+                        // Count all brochures for this firm as unmatched
+                        totalRecords += brochures.size();
+                        if (context.isVerbose()) {
+                            ProcessingLogger.logWarning("No firm data found for firmId: " + firmId + " (" + brochures.size() + " brochures skipped)");
+                        }
                     }
                 }
+                
+                ProcessingLogger.logInfo("Brochure processing with merge completed.");
+                ProcessingLogger.logInfo("Total records in FilesToDownload: " + totalRecords);
+                ProcessingLogger.logInfo("Records with matching firm data: " + matchedRecords);
+                ProcessingLogger.logInfo("Successfully processed brochures: " + processedCount);
+                ProcessingLogger.logInfo("Dated output file: " + outputFilePath);
+                
             }
-            
-            ProcessingLogger.logInfo("Brochure processing with merge completed.");
-            ProcessingLogger.logInfo("Total records in FilesToDownload: " + totalRecords);
-            ProcessingLogger.logInfo("Successfully processed brochures: " + processedCount);
-            ProcessingLogger.logInfo("Dated output file: " + outputFilePath);
             
         } catch (Exception e) {
             context.setLastError("Error in brochure processing with merge: " + e.getMessage());
@@ -358,9 +384,10 @@ public class BrochureProcessingService {
     
     /**
      * Loads download information from FilesToDownload CSV file into a map
+     * Now supports multiple brochures per firm
      */
-    private java.util.Map<String, DownloadInfo> loadDownloadInfoMap(Path filesToDownloadWithStatus) throws Exception {
-        java.util.Map<String, DownloadInfo> downloadInfoMap = new java.util.HashMap<>();
+    private java.util.Map<String, java.util.List<DownloadInfo>> loadDownloadInfoMap(Path filesToDownloadWithStatus) throws Exception {
+        java.util.Map<String, java.util.List<DownloadInfo>> downloadInfoMap = new java.util.HashMap<>();
         
         try (Reader reader = Files.newBufferedReader(filesToDownloadWithStatus, StandardCharsets.UTF_8)) {
             Iterable<CSVRecord> records = CSVFormat.EXCEL
@@ -376,10 +403,16 @@ public class BrochureProcessingService {
                 String downloadStatus = record.get("downloadStatus");
                 String fileName = record.get("fileName");
                 String brochureVersionId = record.get("brochureVersionId");
+                String brochureName = record.get("brochureName");
+                String dateSubmitted = record.get("dateSubmitted");
+                String dateConfirmed = record.get("dateConfirmed");
                 
                 if (firmId != null && !firmId.isEmpty()) {
-                    DownloadInfo info = new DownloadInfo(firmId, downloadStatus, fileName, brochureVersionId);
-                    downloadInfoMap.put(firmId, info);
+                    DownloadInfo info = new DownloadInfo(firmId, downloadStatus, fileName, brochureVersionId, 
+                                                       brochureName, dateSubmitted, dateConfirmed);
+                    
+                    // Add to list for this firm (create list if it doesn't exist)
+                    downloadInfoMap.computeIfAbsent(firmId, k -> new java.util.ArrayList<>()).add(info);
                 }
             }
         }
@@ -418,69 +451,31 @@ public class BrochureProcessingService {
     }
     
     /**
-     * Writes merged brochure analysis data in IAPD_Data format
+     * Writes merged brochure analysis data in IAPD_Data format using CSVWriterService
+     * This ensures all XML fields and FilesToDownload fields are included and consistent with the standardized header
      */
     private void writeMergedBrochureAnalysis(Writer writer, CSVRecord firmRecord, BrochureAnalysis analysis, DownloadInfo downloadInfo) throws Exception {
-        // Build the IAPD_Data record by combining firm data and brochure analysis
-        StringBuilder record = new StringBuilder();
+        // Convert CSVRecord to Map for compatibility with CSVWriterService
+        Map<String, String> recordMap = firmRecord.toMap();
         
-        // Add timestamp
-        record.append(Config.getCurrentDateString()).append(",");
+        // Add FilesToDownload fields to the record map using actual values from DownloadInfo
+        recordMap.put("brochureVersionId", downloadInfo.brochureVersionId);
+        recordMap.put("brochureName", downloadInfo.brochureName);
+        recordMap.put("dateSubmitted", downloadInfo.dateSubmitted);
+        recordMap.put("dateConfirmed", downloadInfo.dateConfirmed);
         
-        // Add firm data fields (using correct field names from CSV)
-        record.append(csvEscape(firmRecord.get("SECRgmCD"))).append(",");
-        record.append(csvEscape(firmRecord.get("FirmCrdNb"))).append(",");
-        record.append(csvEscape(firmRecord.get("SECMb"))).append(",");
-        record.append(csvEscape(firmRecord.get("Business Name"))).append(",");
-        record.append(csvEscape(firmRecord.get("Street 1"))).append(",");
-        record.append(csvEscape(firmRecord.get("Street 2"))).append(",");
-        record.append(csvEscape(firmRecord.get("City"))).append(",");
-        record.append(csvEscape(firmRecord.get("State"))).append(",");
-        record.append(csvEscape(firmRecord.get("Country"))).append(",");
-        record.append(csvEscape(firmRecord.get("Postal Code"))).append(",");
-        record.append(csvEscape(firmRecord.get("Telephone #"))).append(",");
-        record.append(csvEscape(firmRecord.get("Filing Date"))).append(",");
-        record.append(csvEscape(firmRecord.get("AUM"))).append(",");
-        record.append(csvEscape(firmRecord.get("Total Accounts"))).append(",");
-        record.append(csvEscape(firmRecord.get("Total Employees"))).append(",");
+        // Construct brochure URL from version ID
+        String brochureURL = Config.BROCHURE_URL_BASE + downloadInfo.brochureVersionId;
         
-        // Add brochure analysis fields
-        record.append(csvEscape(analysis.getProxyProvider().toString())).append(",");
-        record.append(csvEscape(analysis.getClassActionProvider().toString())).append(",");
-        record.append(csvEscape(analysis.getEsgProvider().toString())).append(",");
-        record.append(csvEscape(analysis.getEsgInvestmentLanguage().toString())).append(",");
-        record.append(csvEscape(downloadInfo.fileName)).append(",");
-        record.append(csvEscape(Config.BROCHURE_URL_BASE + downloadInfo.brochureVersionId)).append(",");
-        
-        // Add email fields
-        record.append(csvEscape(analysis.getEmailComplianceSentence().toString())).append(",");
-        record.append(csvEscape(analysis.getEmailProxySentence().toString())).append(",");
-        record.append(csvEscape(analysis.getEmailBrochureSentence().toString())).append(",");
-        record.append(csvEscape(analysis.getEmailSentence().toString())).append(",");
-        record.append(csvEscape(analysis.getFormattedEmailSetString())).append(",");
-        record.append(csvEscape(analysis.getNoVoteString().toString()));
-        
-        writer.write(record.toString());
-        writer.write(System.lineSeparator());
+        // Use CSVWriterService to write the complete record with all XML fields and FilesToDownload fields
+        csvWriterService.writeBrochureAnalysis(writer, recordMap, analysis, downloadInfo.fileName, brochureURL);
     }
     
     /**
-     * Writes the header for IAPD_Data CSV file (FilesToDownload fields + brochure analysis fields)
+     * Writes the standardized IAPD_Data header with all XML fields
      */
     private void writeIAPDDataHeader(Writer writer) throws Exception {
-        StringBuilder header = new StringBuilder();
-        
-        // Add timestamp column
-        header.append("dateAdded,");
-        
-        // Add all FilesToDownload fields
-        header.append("firmId,firmName,brochureVersionId,brochureName,dateSubmitted,dateConfirmed,downloadStatus,fileName,");
-        
-        // Add brochure analysis fields
-        header.append("proxyProvider,classActionProvider,esgProvider,esgInvestmentLanguage,brochureURL,");
-        header.append("complianceEmail,proxyEmail,brochureEmail,generalEmail,allEmails,doesNotVote");
-        
-        writer.write(header.toString());
+        writer.write(Config.IAPD_DATA_HEADER);
         writer.write(System.lineSeparator());
     }
     
@@ -575,12 +570,19 @@ public class BrochureProcessingService {
         final String downloadStatus;
         final String fileName;
         final String brochureVersionId;
+        final String brochureName;
+        final String dateSubmitted;
+        final String dateConfirmed;
         
-        DownloadInfo(String firmId, String downloadStatus, String fileName, String brochureVersionId) {
+        DownloadInfo(String firmId, String downloadStatus, String fileName, String brochureVersionId, 
+                    String brochureName, String dateSubmitted, String dateConfirmed) {
             this.firmId = firmId;
             this.downloadStatus = downloadStatus != null ? downloadStatus : "";
             this.fileName = fileName != null ? fileName : "";
             this.brochureVersionId = brochureVersionId != null ? brochureVersionId : "";
+            this.brochureName = brochureName != null ? brochureName : "";
+            this.dateSubmitted = dateSubmitted != null ? dateSubmitted : "";
+            this.dateConfirmed = dateConfirmed != null ? dateConfirmed : "";
         }
     }
     

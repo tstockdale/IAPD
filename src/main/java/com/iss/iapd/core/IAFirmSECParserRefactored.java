@@ -4,19 +4,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.iss.iapd.config.CommandLineOptions;
 import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ConfigurationManager;
-import com.iss.iapd.config.CommandLineOptions;
 import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.model.ProcessingPhase;
-import com.iss.iapd.services.xml.XMLProcessingService;
-import com.iss.iapd.services.brochure.BrochureURLExtractionService;
+import com.iss.iapd.services.brochure.BrochureAnalyzer;
 import com.iss.iapd.services.brochure.BrochureDownloadService;
 import com.iss.iapd.services.brochure.BrochureProcessingService;
-import com.iss.iapd.services.brochure.BrochureAnalyzer;
+import com.iss.iapd.services.brochure.BrochureURLExtractionService;
+import com.iss.iapd.services.csv.CSVWriterService;
 import com.iss.iapd.services.download.FileDownloadService;
 import com.iss.iapd.services.download.MonthlyDownloadService;
-import com.iss.iapd.services.csv.CSVWriterService;
+import com.iss.iapd.services.xml.XMLProcessingService;
 
 /**
  * Refactored Investment Adviser Public Disclosure (IAPD) Parser
@@ -135,6 +135,47 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
+     * Handles force restart by renaming the existing Data directory with a timestamp
+     * @param context processing context containing configuration
+     */
+    private void handleForceRestart(ProcessingContext context) {
+        if (!context.isForceRestart()) {
+            return; // Force restart not requested
+        }
+        
+        try {
+            Path dataDirectory = Paths.get("./Data");
+            
+            if (!Files.exists(dataDirectory)) {
+                ProcessingLogger.logInfo("Force restart requested, but Data directory does not exist. Proceeding with fresh start.");
+                return;
+            }
+            
+            // Generate timestamp for backup directory name
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+            String timestamp = now.format(formatter);
+            String backupDirName = "Data_" + timestamp;
+            Path backupDirectory = Paths.get(backupDirName);
+            
+            // Rename the existing Data directory
+            Files.move(dataDirectory, backupDirectory);
+            
+            ProcessingLogger.logInfo("=== FORCE RESTART EXECUTED ===");
+            ProcessingLogger.logInfo("Existing Data directory renamed to: " + backupDirName);
+            ProcessingLogger.logInfo("Starting fresh with new Data directory");
+            System.out.println("Force restart: Renamed existing Data directory to " + backupDirName);
+            
+        } catch (Exception e) {
+            String errorMsg = "Failed to rename Data directory during force restart: " + e.getMessage();
+            ProcessingLogger.logError(errorMsg, e);
+            System.err.println(errorMsg);
+            e.printStackTrace();
+            // Continue processing - let the user decide if they want to proceed
+        }
+    }
+    
+    /**
      * Processes IAPD data in four distinct steps:
      * 1. Download and parse XML to extract firm data (without brochure URLs)
      * 2. Extract brochure URLs from FIRM API and create FilesToDownload
@@ -144,6 +185,9 @@ public class IAFirmSECParserRefactored {
      */
     public void processIAPDDataInSteps(ProcessingContext context) {
         try {
+            // Handle force restart before setting up directories
+            handleForceRestart(context);
+            
             _setUpDirectories();
             
             // Check if monthly mode is enabled

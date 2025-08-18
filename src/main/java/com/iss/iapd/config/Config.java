@@ -26,9 +26,12 @@ public final class Config {
     // Output file naming
     public static final String OUTPUT_FILE_BASE_NAME = "IAPD_Data";
     
-    // CSV headers
+    // CSV headers - Standardized to include all XML data fields
+    // Base firm data fields (extracted from XML) - used in IAPD_SEC_DATA files
     public static final String FIRM_HEADER = "dateAdded,SECRgmCD,FirmCrdNb,SECMb,Business Name,Legal Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Fax #,Registration Firm Type,Registration State,Registration Date,Filing Date,Filing Version,Total Employees,AUM,Total Accounts,BrochureURL";
-    public static final String IAPD_DATA_HEADER = "dateAdded,SECRgmCD,FirmCrdNb,SECMb,Business Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Filing Date,AUM,Total Accounts,Total Employees,Proxy Provider, Class Action Provider,ESG Provider, ESG Investment Language, File Name,Brochure URL,Email -- Compliance,Email -- Proxy,Email -- Brochure,Email -- Item 17,Email -- All,Does Not Vote String";
+    
+    // Complete IAPD data fields (firm data + FilesToDownload fields + brochure analysis) - used in final IAPD_DATA files
+    public static final String IAPD_DATA_HEADER = "dateAdded,SECRgmCD,FirmCrdNb,SECMb,Business Name,Legal Name,Street 1,Street 2,City,State,Country,Postal Code,Telephone #,Fax #,Registration Firm Type,Registration State,Registration Date,Filing Date,Filing Version,Total Employees,AUM,Total Accounts,BrochureURL,brochureVersionId,brochureName,dateSubmitted,dateConfirmed,File Name,Proxy Provider,Class Action Provider,ESG Provider,ESG Investment Language,Email -- Compliance,Email -- Proxy,Email -- Brochure,Email -- Item 17,Email -- All,Does Not Vote String";
     
     // Legacy alias for backward compatibility
     public static final String FOUND_FILE_HEADER = IAPD_DATA_HEADER;

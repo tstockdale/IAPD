@@ -3,13 +3,13 @@ package com.iss.iapd.services.xml;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.stream.XMLInputFactory;
@@ -19,13 +19,13 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
 
+import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.exceptions.XMLProcessingException;
-import com.iss.iapd.services.incremental.IncrementalUpdateManager;
-import com.iss.iapd.model.FirmDataBuilder;
 import com.iss.iapd.model.FirmData;
-import com.iss.iapd.config.Config;
+import com.iss.iapd.model.FirmDataBuilder;
+import com.iss.iapd.services.incremental.IncrementalUpdateManager;
 
 /**
  * Service class responsible for XML processing operations
@@ -324,33 +324,34 @@ public class XMLProcessingService {
     }
     
     /**
-     * Writes a complete firm record to CSV
+     * Writes a complete firm record to CSV with all XML data fields
+     * Updated to match FIRM_HEADER structure exactly
      */
     private void writeFirmRecord(CSVPrinter printer, FirmData firmData) throws Exception {
         printer.printRecord(
-            Config.getCurrentDateString(),
-            firmData.getSECRgnCD(),
-            firmData.getFirmCrdNb(),
-            firmData.getSECNb(),
-            sanitizeValue(firmData.getBusNm()),
-            sanitizeValue(firmData.getLegalNm()),
-            sanitizeValue(firmData.getStreet1()),
-            sanitizeValue(firmData.getStreet2()),
-            sanitizeValue(firmData.getCity()),
-            firmData.getState(),
-            firmData.getCountry(),
-            firmData.getPostalCode(),
-            firmData.getPhoneNumber(),
-            firmData.getFaxNumber(),
-            firmData.getFirmType(),
-            firmData.getRegistrationState(),
-            firmData.getRegistrationDate(),
-            firmData.getFilingDate(),
-            firmData.getFormVersion(),
-            firmData.getTotalEmployees(),
-            firmData.getAUM(),
-            firmData.getTotalAccounts(),
-            ""
+            Config.getCurrentDateString(),           // dateAdded
+            firmData.getSECRgnCD(),                 // SECRgmCD
+            firmData.getFirmCrdNb(),                // FirmCrdNb
+            firmData.getSECNb(),                    // SECMb
+            sanitizeValue(firmData.getBusNm()),     // Business Name
+            sanitizeValue(firmData.getLegalNm()),   // Legal Name
+            sanitizeValue(firmData.getStreet1()),   // Street 1
+            sanitizeValue(firmData.getStreet2()),   // Street 2
+            sanitizeValue(firmData.getCity()),      // City
+            firmData.getState(),                    // State
+            firmData.getCountry(),                  // Country
+            firmData.getPostalCode(),               // Postal Code
+            firmData.getPhoneNumber(),              // Telephone #
+            firmData.getFaxNumber(),                // Fax #
+            firmData.getFirmType(),                 // Registration Firm Type
+            firmData.getRegistrationState(),        // Registration State
+            firmData.getRegistrationDate(),         // Registration Date
+            firmData.getFilingDate(),               // Filing Date
+            firmData.getFormVersion(),              // Filing Version
+            firmData.getTotalEmployees(),           // Total Employees
+            firmData.getAUM(),                      // AUM
+            firmData.getTotalAccounts(),            // Total Accounts
+            firmData.getBrochureURL()               // BrochureURL
         );
     }
     
