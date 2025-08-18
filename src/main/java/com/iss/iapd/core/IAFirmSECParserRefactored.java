@@ -203,6 +203,30 @@ public class IAFirmSECParserRefactored {
                 // Process the monthly brochure data directly
                 processMonthlyBrochures(monthlyDataPath, context);
                 
+            } else if (context.isResumeDownloads()) {
+                // Resume downloads mode: Skip Steps 1 & 2, resume from Step 3
+                Path filesToDownloadWithStatus = handleResumeDownloads(context);
+                if (filesToDownloadWithStatus == null) {
+                    return; // Error already logged or no work to do
+                }
+                
+                // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
+                // Find the corresponding firm data file for processing
+                com.iss.iapd.services.incremental.ResumeDownloadsService resumeService = new com.iss.iapd.services.incremental.ResumeDownloadsService();
+                Path filesToDownload = resumeService.findFilesToDownload();
+                if (filesToDownload != null) {
+                    // For resume mode, we need to find the original firm data file
+                    // This is a simplified approach - in practice you might need more sophisticated matching
+                    Path firmDataFile = findCorrespondingFirmDataFile();
+                    if (firmDataFile != null) {
+                        processBrochures(firmDataFile, filesToDownloadWithStatus, context);
+                    } else {
+                        ProcessingLogger.logWarning("Could not find corresponding firm data file for brochure processing");
+                        ProcessingLogger.logInfo("Resume downloads completed, but skipping brochure processing step");
+                    }
+                } else {
+                    ProcessingLogger.logWarning("Could not find FilesToDownload file for brochure processing");
+                }
             } else {
                 // Standard mode: Four-step processing
                 
@@ -374,6 +398,93 @@ public class IAFirmSECParserRefactored {
             context.setCurrentPhase(ProcessingPhase.ERROR);
             System.err.println("Error in brochure processing step: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Handles resume downloads functionality
+     * @param context processing context
+     * @return path to updated FilesToDownload file with download status, or null if failed/no work
+     */
+    private Path handleResumeDownloads(ProcessingContext context) {
+        try {
+            context.setCurrentPhase(ProcessingPhase.DOWNLOADING_BROCHURES);
+            ProcessingLogger.logInfo("=== RESUME DOWNLOADS MODE ===");
+            
+            com.iss.iapd.services.incremental.ResumeDownloadsService resumeService = new com.iss.iapd.services.incremental.ResumeDownloadsService();
+            
+            // Check if resume is possible
+            com.iss.iapd.services.incremental.ResumeDownloadsService.ResumeInfo resumeInfo = resumeService.checkResumeCapability();
+            if (resumeInfo == null) {
+                ProcessingLogger.logInfo("Resume downloads not possible or not needed");
+                return null;
+            }
+            
+            // Log resume statistics
+            resumeService.logResumeStats(resumeInfo);
+            
+            // Resume downloads from the determined point
+            Path outputFilePath = brochureDownloadService.downloadBrochuresFromFilesToDownloadWithResume(
+                resumeInfo.getFilesToDownloadPath(), 
+                resumeInfo.getFilesToDownloadWithDownloadsPath(), 
+                resumeInfo.getResumeIndex(), 
+                context);
+            
+            if (outputFilePath != null) {
+                ProcessingLogger.logInfo("Resume brochure download completed. Updated FilesToDownload file: " + outputFilePath);
+                return outputFilePath;
+            } else {
+                context.setLastError("Failed to resume brochure downloads");
+                context.setCurrentPhase(ProcessingPhase.ERROR);
+                System.err.println("Failed to resume brochure downloads");
+                return null;
+            }
+            
+        } catch (Exception e) {
+            context.setLastError("Error in resume downloads: " + e.getMessage());
+            context.setCurrentPhase(ProcessingPhase.ERROR);
+            System.err.println("Error in resume downloads: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Finds the corresponding firm data file for brochure processing
+     * This is a simplified implementation that looks for the most recent IAPD_SEC_DATA file
+     * @return path to firm data file, or null if not found
+     */
+    private Path findCorrespondingFirmDataFile() {
+        try {
+            java.io.File inputDir = new java.io.File(Config.BROCHURE_INPUT_PATH);
+            if (!inputDir.exists() || !inputDir.isDirectory()) {
+                ProcessingLogger.logWarning("Input directory does not exist: " + Config.BROCHURE_INPUT_PATH);
+                return null;
+            }
+            
+            // Look for IAPD_SEC_DATA files (these contain firm data without brochure URLs)
+            java.io.File[] files = inputDir.listFiles((dir, name) -> 
+                name.startsWith("IAPD_SEC_DATA") && name.endsWith(".csv"));
+            
+            if (files == null || files.length == 0) {
+                ProcessingLogger.logWarning("No IAPD_SEC_DATA files found for brochure processing");
+                return null;
+            }
+            
+            // Find the most recent file by modification time
+            java.io.File mostRecent = files[0];
+            for (java.io.File file : files) {
+                if (file.lastModified() > mostRecent.lastModified()) {
+                    mostRecent = file;
+                }
+            }
+            
+            ProcessingLogger.logInfo("Found firm data file for brochure processing: " + mostRecent.getName());
+            return mostRecent.toPath();
+            
+        } catch (Exception e) {
+            ProcessingLogger.logError("Error finding corresponding firm data file", e);
+            return null;
         }
     }
     
