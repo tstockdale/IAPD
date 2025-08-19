@@ -162,11 +162,24 @@ public class IAFirmSECParserRefactored {
             System.out.println("Force restart: Renamed existing Data directory to " + backupDirName);
             
         } catch (Exception e) {
-            String errorMsg = "Failed to rename Data directory during force restart: " + e.getMessage();
+            String errorMsg = "CRITICAL ERROR: Failed to rename Data directory during force restart.";
+            String detailMsg = "Cannot proceed with force restart - existing data could not be backed up safely.";
+            String actionMsg = "Please manually resolve the issue with the Data directory and try again.";
+            
             ProcessingLogger.logError(errorMsg, e);
+            ProcessingLogger.logError("Details: " + e.getMessage(), null);
+            ProcessingLogger.logError(detailMsg, null);
+            ProcessingLogger.logError(actionMsg, null);
+            
+            System.err.println("=== FORCE RESTART FAILED ===");
             System.err.println(errorMsg);
-            e.printStackTrace();
-            // Continue processing - let the user decide if they want to proceed
+            System.err.println("Details: " + e.getMessage());
+            System.err.println(detailMsg);
+            System.err.println(actionMsg);
+            System.err.println("Application will now exit.");
+            
+            // Exit immediately - force restart must succeed or fail completely
+            System.exit(1);
         }
     }
     
