@@ -93,15 +93,10 @@ public class IAFirmSECParserRefactored {
             // Build processing context from all configuration sources
             ProcessingContext context = parser.configurationManager.buildContext(args);
             
-            // Show help if requested (check command line directly for immediate response)
-            try {
-                CommandLineOptions options = CommandLineOptions.parseArgs(args);
-                if (options.isShowHelp()) {
-                    CommandLineOptions.printUsage();
-                    return;
-                }
-            } catch (IllegalArgumentException e) {
-                // Continue with context-based processing
+            // Check if help was requested from the built context
+            if (context.isShowHelp()) {
+                CommandLineOptions.printUsage();
+                return;
             }
             
             // Validate configuration

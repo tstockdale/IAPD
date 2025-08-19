@@ -48,18 +48,18 @@ public class ConfigurationManager {
             
             return builder.build();
             
+        } catch (IllegalArgumentException e) {
+            // Command line parsing errors should bubble up to main method
+            // Don't fall back to defaults - let the user know what's wrong
+            throw e;
         } catch (Exception e) {
-            System.err.println("Error building configuration: " + e.getMessage());
-            // Fall back to command line only
-            try {
-                CommandLineOptions options = CommandLineOptions.parseArgs(args);
-                return ProcessingContext.fromCommandLineOptions(options);
-            } catch (IllegalArgumentException cmdError) {
-                // Ultimate fallback to defaults
-                return ProcessingContext.builder()
-                        .configSource("fallback-default")
-                        .build();
-            }
+            // For non-command-line errors (like file I/O), we can fall back
+            System.err.println("Warning: Error loading configuration files: " + e.getMessage());
+            System.err.println("Falling back to command line configuration only...");
+            
+            // Try command line only (this will still throw IllegalArgumentException if command line is invalid)
+            CommandLineOptions options = CommandLineOptions.parseArgs(args);
+            return ProcessingContext.fromCommandLineOptions(options);
         }
     }
     
@@ -218,6 +218,7 @@ public class ConfigurationManager {
                    .incrementalDownloads(options.isIncrementalDownloads())
                    .incrementalProcessing(options.isIncrementalProcessing())
                    .baselineFilePath(options.getBaselineFilePath())
+                   .showHelp(options.isShowHelp())
                    .configSource("command-line");
             
             // Optional rate overrides

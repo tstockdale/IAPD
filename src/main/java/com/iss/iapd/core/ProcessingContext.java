@@ -31,6 +31,7 @@ public class ProcessingContext {
     private final boolean incrementalProcessing;
     private final String baselineFilePath;
     private final String monthName;
+    private final boolean showHelp;
     private final String configSource;
     private final LocalDateTime createdAt;
     // Rate limiting configuration
@@ -66,6 +67,7 @@ public class ProcessingContext {
         this.incrementalProcessing = builder.incrementalProcessing;
         this.baselineFilePath = builder.baselineFilePath;
         this.monthName = builder.monthName;
+        this.showHelp = builder.showHelp;
         this.configSource = builder.configSource;
         this.createdAt = LocalDateTime.now();
         this.processingStartTime.set(System.currentTimeMillis());
@@ -91,6 +93,7 @@ public class ProcessingContext {
     public boolean isIncrementalProcessing() { return incrementalProcessing; }
     public String getBaselineFilePath() { return baselineFilePath; }
     public String getMonthName() { return monthName; }
+    public boolean isShowHelp() { return showHelp; }
     public String getConfigSource() { return configSource; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public int getURLRatePerSecond() { return urlRatePerSecond; }
@@ -184,6 +187,7 @@ public class ProcessingContext {
         private boolean incrementalProcessing = false;
         private String baselineFilePath = null;
         private String monthName = null;
+        private boolean showHelp = false;
         private String configSource = "builder";
         private int urlRatePerSecond = 1;
         private int downloadRatePerSecond = 1;
@@ -271,6 +275,11 @@ public class ProcessingContext {
             return this;
         }
         
+        public Builder showHelp(boolean showHelp) {
+            this.showHelp = showHelp;
+            return this;
+        }
+        
         public Builder configSource(String configSource) {
             this.configSource = configSource != null ? configSource : "unknown";
             return this;
@@ -330,6 +339,7 @@ public class ProcessingContext {
                 .incrementalProcessing(options.isIncrementalProcessing())
                 .baselineFilePath(options.getBaselineFilePath())
                 .monthName(options.getMonthName())
+                .showHelp(options.isShowHelp())
                 // If CLI specified rate overrides, apply them; otherwise builder defaults hold
                 .urlRatePerSecond(options.getURLRatePerSecond() != null ? options.getURLRatePerSecond() : 1)
                 .downloadRatePerSecond(options.getDownloadRatePerSecond() != null ? options.getDownloadRatePerSecond() : 1)
