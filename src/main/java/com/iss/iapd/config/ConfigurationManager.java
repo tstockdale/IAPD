@@ -41,9 +41,10 @@ public class ConfigurationManager {
             // Layer 3: Command line arguments (highest priority)
             applyCommandLineConfiguration(builder, args);
             
-            // Layer 4: Analyze existing output data for incremental processing
-            
-            applyIncrementalProcessingConfiguration(builder);
+            // Layer 4: Analyze existing output data for incremental processing (only if requested)
+            if (hasIncrementalFlags(builder)) {
+                applyIncrementalProcessingConfiguration(builder);
+            }
             
             return builder.build();
             
@@ -60,6 +61,20 @@ public class ConfigurationManager {
                         .build();
             }
         }
+    }
+    
+    /**
+     * Checks if any incremental processing flags are set in the builder
+     * @param builder the ProcessingContext builder to check
+     * @return true if any incremental flags are set, false otherwise
+     */
+    private boolean hasIncrementalFlags(ProcessingContext.Builder builder) {
+        // Build a temporary context to check the current state
+        ProcessingContext tempContext = builder.build();
+        
+        return tempContext.isIncrementalUpdates() || 
+               tempContext.isIncrementalDownloads() || 
+               tempContext.isIncrementalProcessing();
     }
     
     /**
