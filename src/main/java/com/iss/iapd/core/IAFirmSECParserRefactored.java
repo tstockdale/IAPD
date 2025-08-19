@@ -235,6 +235,28 @@ public class IAFirmSECParserRefactored {
                 } else {
                     ProcessingLogger.logWarning("Could not find FilesToDownload file for brochure processing");
                 }
+            } else if (context.isResumeURLExtraction()) {
+                // Resume URL extraction mode: Skip Step 1, resume from Step 2
+                Path filesToDownload = handleResumeURLExtraction(context);
+                if (filesToDownload == null) {
+                    return; // Error already logged or no work to do
+                }
+                
+                // Step 3: Download brochure PDF files
+                Path filesToDownloadWithStatus = downloadBrochures(filesToDownload, context);
+                if (filesToDownloadWithStatus == null) {
+                    return; // Error already logged
+                }
+                
+                // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
+                // Find the corresponding firm data file for processing
+                Path firmDataFile = findCorrespondingFirmDataFileForURLExtraction();
+                if (firmDataFile != null) {
+                    processBrochures(firmDataFile, filesToDownloadWithStatus, context);
+                } else {
+                    ProcessingLogger.logWarning("Could not find corresponding firm data file for brochure processing");
+                    ProcessingLogger.logInfo("Resume URL extraction completed, but skipping brochure processing step");
+                }
             } else {
                 // Standard mode: Four-step processing
                 
@@ -410,6 +432,57 @@ public class IAFirmSECParserRefactored {
     }
     
     /**
+     * Handles resume URL extraction functionality
+     * @param context processing context
+     * @return path to FilesToDownload file, or null if failed/no work
+     */
+    private Path handleResumeURLExtraction(ProcessingContext context) {
+        try {
+            context.setCurrentPhase(ProcessingPhase.EXTRACTING_BROCHURE_URLS);
+            ProcessingLogger.logInfo("=== RESUME URL EXTRACTION MODE ===");
+            
+            com.iss.iapd.services.incremental.ResumeURLExtractionService resumeService = new com.iss.iapd.services.incremental.ResumeURLExtractionService();
+            
+            // Check if resume is possible
+            com.iss.iapd.services.incremental.ResumeURLExtractionService.ResumeInfo resumeInfo = resumeService.checkResumeCapability();
+            if (resumeInfo == null) {
+                ProcessingLogger.logInfo("Resume URL extraction not possible or not needed");
+                return null;
+            }
+            
+            // Log resume statistics
+            resumeService.logResumeStats(resumeInfo);
+            
+            // Find the corresponding firm data file to continue processing
+            Path firmDataFile = resumeInfo.getFirmDataPath();
+            if (firmDataFile == null || !Files.exists(firmDataFile)) {
+                ProcessingLogger.logError("Could not find corresponding firm data file for resume URL extraction", null);
+                return null;
+            }
+            
+            // Resume URL extraction from the determined point
+            Path outputFilePath = brochureURLExtractionService.processFirmDataForBrochures(firmDataFile.toFile(), context);
+            
+            if (outputFilePath != null) {
+                ProcessingLogger.logInfo("Resume URL extraction completed. FilesToDownload file: " + outputFilePath);
+                return outputFilePath;
+            } else {
+                context.setLastError("Failed to resume URL extraction");
+                context.setCurrentPhase(ProcessingPhase.ERROR);
+                System.err.println("Failed to resume URL extraction");
+                return null;
+            }
+            
+        } catch (Exception e) {
+            context.setLastError("Error in resume URL extraction: " + e.getMessage());
+            context.setCurrentPhase(ProcessingPhase.ERROR);
+            System.err.println("Error in resume URL extraction: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
      * Handles resume downloads functionality
      * @param context processing context
      * @return path to updated FilesToDownload file with download status, or null if failed/no work
@@ -453,6 +526,33 @@ public class IAFirmSECParserRefactored {
             context.setCurrentPhase(ProcessingPhase.ERROR);
             System.err.println("Error in resume downloads: " + e.getMessage());
             e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Finds the corresponding firm data file for URL extraction resume processing
+     * Uses the ResumeURLExtractionService to get the correct firm data file
+     * @return path to firm data file, or null if not found
+     */
+    private Path findCorrespondingFirmDataFileForURLExtraction() {
+        try {
+            com.iss.iapd.services.incremental.ResumeURLExtractionService resumeService = new com.iss.iapd.services.incremental.ResumeURLExtractionService();
+            com.iss.iapd.services.incremental.ResumeURLExtractionService.ResumeInfo resumeInfo = resumeService.checkResumeCapability();
+            
+            if (resumeInfo != null) {
+                Path firmDataFile = resumeInfo.getFirmDataPath();
+                if (firmDataFile != null && Files.exists(firmDataFile)) {
+                    ProcessingLogger.logInfo("Found firm data file for URL extraction resume: " + firmDataFile.getFileName());
+                    return firmDataFile;
+                }
+            }
+            
+            ProcessingLogger.logWarning("Could not find firm data file for URL extraction resume");
+            return null;
+            
+        } catch (Exception e) {
+            ProcessingLogger.logError("Error finding corresponding firm data file for URL extraction", e);
             return null;
         }
     }

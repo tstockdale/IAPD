@@ -12,6 +12,7 @@ public class CommandLineOptions {
     private boolean resumeEnabled = false;
     private boolean resumeDownloads = false;
     private boolean resumeProcessing = false;
+    private boolean resumeURLExtraction = false;
     private boolean validatePdfs = true;
     private boolean forceRestart = false;
     private boolean incrementalUpdates = false;
@@ -157,6 +158,10 @@ public class CommandLineOptions {
                     options.resumeProcessing = true;
                     break;
                     
+                case "--resume-urlextraction":
+                    options.resumeURLExtraction = true;
+                    break;
+                    
                 case "--validate-pdfs":
                     options.validatePdfs = true;
                     break;
@@ -258,6 +263,7 @@ public class CommandLineOptions {
         System.out.println("  -r, --resume                  Enable resume for both downloads and processing");
         System.out.println("      --resume-downloads        Enable resume for brochure downloads only");
         System.out.println("      --resume-processing       Enable resume for brochure processing only");
+        System.out.println("      --resume-urlextraction    Resume brochure URL extraction from last processed firm");
         System.out.println("      --validate-pdfs           Validate existing PDF files during resume (default)");
         System.out.println("      --no-validate-pdfs        Skip PDF validation during resume");
         System.out.println("      --force-restart           Ignore existing files and start fresh");
@@ -278,6 +284,7 @@ public class CommandLineOptions {
         System.out.println("  java IAFirmSECParserRefactored -l 500 --verbose");
         System.out.println("  java IAFirmSECParserRefactored --resume --index-limit 1000");
         System.out.println("  java IAFirmSECParserRefactored --resume-downloads --validate-pdfs");
+        System.out.println("  java IAFirmSECParserRefactored --resume-urlextraction");
         System.out.println("  java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Output/IAPD_Data.csv");
         System.out.println("  java IAFirmSECParserRefactored --incremental-downloads --baseline-file ./Data/Output/IAPD_Data.csv");
         System.out.println("  java IAFirmSECParserRefactored --incremental --month january");
@@ -308,6 +315,10 @@ public class CommandLineOptions {
     
     public boolean isResumeProcessing() {
         return resumeProcessing;
+    }
+    
+    public boolean isResumeURLExtraction() {
+        return resumeURLExtraction;
     }
     
     public boolean isValidatePdfs() {

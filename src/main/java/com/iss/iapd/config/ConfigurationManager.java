@@ -46,7 +46,11 @@ public class ConfigurationManager {
                 applyIncrementalProcessingConfiguration(builder);
             }
             
-            return builder.build();
+            // Validate mutual exclusivity between resume-urlextraction and incremental options
+            ProcessingContext tempContext = builder.build();
+            validateMutualExclusivity(tempContext);
+            
+            return tempContext;
             
         } catch (IllegalArgumentException e) {
             // Command line parsing errors should bubble up to main method
@@ -75,6 +79,32 @@ public class ConfigurationManager {
         return tempContext.isIncrementalUpdates() || 
                tempContext.isIncrementalDownloads() || 
                tempContext.isIncrementalProcessing();
+    }
+    
+    /**
+     * Validates mutual exclusivity between resume-urlextraction and incremental options
+     * @param context the ProcessingContext to validate
+     * @throws IllegalArgumentException if conflicting options are detected
+     */
+    private void validateMutualExclusivity(ProcessingContext context) {
+        if (context.isResumeURLExtraction()) {
+            boolean hasIncrementalOptions = context.isIncrementalUpdates() || 
+                                          context.isIncrementalDownloads() || 
+                                          context.isIncrementalProcessing();
+            
+            if (hasIncrementalOptions) {
+                String errorMsg = "Error: --resume-urlextraction cannot be used with incremental processing options.\n" +
+                                "The following options are mutually exclusive with --resume-urlextraction:\n" +
+                                "  --incremental, -i\n" +
+                                "  --incremental-downloads\n" +
+                                "  --incremental-processing\n" +
+                                "  --incremental-updates\n" +
+                                "Please use either resume-urlextraction OR incremental processing, but not both.";
+                
+                ProcessingLogger.logError(errorMsg, null);
+                throw new IllegalArgumentException(errorMsg);
+            }
+        }
     }
     
     /**
@@ -212,6 +242,7 @@ public class ConfigurationManager {
                    .verbose(options.isVerbose())
                    .resumeDownloads(options.isResumeDownloads())
                    .resumeProcessing(options.isResumeProcessing())
+                   .resumeURLExtraction(options.isResumeURLExtraction())
                    .validatePdfs(options.isValidatePdfs())
                    .forceRestart(options.isForceRestart())
                    .incrementalUpdates(options.isIncrementalUpdates())

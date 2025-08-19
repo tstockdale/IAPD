@@ -24,6 +24,7 @@ public class ProcessingContext {
     private final boolean skipBrochureDownload;
     private final boolean resumeDownloads;
     private final boolean resumeProcessing;
+    private final boolean resumeURLExtraction;
     private final boolean validatePdfs;
     private final boolean forceRestart;
     private final boolean incrementalUpdates;
@@ -60,6 +61,7 @@ public class ProcessingContext {
         this.skipBrochureDownload = builder.skipBrochureDownload;
         this.resumeDownloads = builder.resumeDownloads;
         this.resumeProcessing = builder.resumeProcessing;
+        this.resumeURLExtraction = builder.resumeURLExtraction;
         this.validatePdfs = builder.validatePdfs;
         this.forceRestart = builder.forceRestart;
         this.incrementalUpdates = builder.incrementalUpdates;
@@ -86,6 +88,7 @@ public class ProcessingContext {
     public boolean isSkipBrochureDownload() { return skipBrochureDownload; }
     public boolean isResumeDownloads() { return resumeDownloads; }
     public boolean isResumeProcessing() { return resumeProcessing; }
+    public boolean isResumeURLExtraction() { return resumeURLExtraction; }
     public boolean isValidatePdfs() { return validatePdfs; }
     public boolean isForceRestart() { return forceRestart; }
     public boolean isIncrementalUpdates() { return incrementalUpdates; }
@@ -180,6 +183,7 @@ public class ProcessingContext {
         private boolean skipBrochureDownload = false;
         private boolean resumeDownloads = false;
         private boolean resumeProcessing = false;
+        private boolean resumeURLExtraction = false;
         private boolean validatePdfs = true;
         private boolean forceRestart = false;
         private boolean incrementalUpdates = false;
@@ -237,6 +241,11 @@ public class ProcessingContext {
         
         public Builder resumeProcessing(boolean resumeProcessing) {
             this.resumeProcessing = resumeProcessing;
+            return this;
+        }
+        
+        public Builder resumeURLExtraction(boolean resumeURLExtraction) {
+            this.resumeURLExtraction = resumeURLExtraction;
             return this;
         }
         
@@ -332,6 +341,7 @@ public class ProcessingContext {
                 .verbose(options.isVerbose())
                 .resumeDownloads(options.isResumeDownloads())
                 .resumeProcessing(options.isResumeProcessing())
+                .resumeURLExtraction(options.isResumeURLExtraction())
                 .validatePdfs(options.isValidatePdfs())
                 .forceRestart(options.isForceRestart())
                 .incrementalUpdates(options.isIncrementalUpdates())
