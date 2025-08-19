@@ -42,6 +42,7 @@ public class ConfigurationManager {
             applyCommandLineConfiguration(builder, args);
             
             // Layer 4: Analyze existing output data for incremental processing
+            
             applyIncrementalProcessingConfiguration(builder);
             
             return builder.build();

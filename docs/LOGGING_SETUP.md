@@ -4,7 +4,7 @@
 The ProcessingLogger class has been updated to use Apache Log4j 2.20.0 for robust logging with file rotation capabilities.
 
 ## Features
-- **File Logging**: Logs are written to `./Data/Logs/processing.log`
+- **File Logging**: Logs are written to `./Logs/processing.log`
 - **Log Rotation**: Automatic rollover when log files reach 5MB
 - **Compressed Archives**: Old log files are compressed as `.gz` files
 - **Dual Output**: Logs appear both in console and file
@@ -17,7 +17,7 @@ The ProcessingLogger class has been updated to use Apache Log4j 2.20.0 for robus
 - `lib/log4j-api-2.20.0.jar` - Log4j API library
 - `lib/log4j-core-2.20.0.jar` - Log4j Core implementation
 - `src/log4j2.xml` - Log4j configuration file
-- `Data/Logs/` - Directory for log files (created automatically)
+- `Logs/` - Directory for log files (created automatically)
 
 ### Modified Files:
 - `src/ProcessingLogger.java` - Updated to use Log4j instead of System.out.println
@@ -25,9 +25,9 @@ The ProcessingLogger class has been updated to use Apache Log4j 2.20.0 for robus
 ## Configuration Details
 
 ### Log File Settings:
-- **Primary Log File**: `./Data/Logs/processing.log`
+- **Primary Log File**: `./Logs/processing.log`
 - **Rollover Size**: 5MB per file
-- **Archive Pattern**: `./Data/Logs/processing-%i.log.gz`
+- **Archive Pattern**: `./Logs/processing-%i.log.gz`
 - **Max Archives**: 10 files (configurable in log4j2.xml)
 
 ### Log Format:
@@ -114,19 +114,19 @@ IAPD/
 │   ├── ProcessingLogger.java
 │   ├── log4j2.xml
 │   └── LoggingTest.java
+├── Logs/
+│   ├── processing.log
+│   ├── processing-1.log.gz
+│   └── processing-2.log.gz
 └── Data/
-    └── Logs/
-        ├── processing.log
-        ├── processing-1.log.gz
-        └── processing-2.log.gz
 ```
 
 ## Troubleshooting
 
 ### Common Issues:
 1. **ClassNotFoundException**: Ensure log4j jars are in classpath
-2. **Log file not created**: Check that `Data/Logs` directory exists
-3. **Permission errors**: Ensure write permissions to `Data/Logs` directory
+2. **Log file not created**: Check that `Logs` directory exists
+3. **Permission errors**: Ensure write permissions to `Logs` directory
 
 ### Verifying Setup:
 Run the LoggingTest class to verify everything is working correctly:
@@ -134,4 +134,4 @@ Run the LoggingTest class to verify everything is working correctly:
 java -cp "lib/log4j-api-2.20.0.jar;lib/log4j-core-2.20.0.jar;src" LoggingTest
 ```
 
-This should create log entries both in console and in `Data/Logs/processing.log`.
+This should create log entries both in console and in `Logs/processing.log`.
