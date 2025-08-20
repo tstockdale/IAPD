@@ -270,7 +270,7 @@ public class PatternMatchersTest {
         @DisplayName("Should match valid email addresses")
         void testValidEmailAddresses(String email) {
             Pattern pattern = PatternMatchers.EMAIL_PATTERN;
-            Matcher matcher = pattern.matcher("Contact us at " + email + " for more info");
+            Matcher matcher = pattern.matcher("Test Language Preceding. Contact us at " + email + " for more info");
             
             assertTrue(matcher.find());
             assertEquals(email, matcher.group(1));
@@ -300,17 +300,17 @@ public class PatternMatchersTest {
             Pattern pattern = PatternMatchers.EMAIL_COMPLIANCE_SENTENCE_PATTERN;
             System.out.println("TEST: EMAIL_COMPLIANCE_SENTENCE_PATTERN=" + pattern.pattern());
             
-            String s1 = "For compliance matters, contact compliance@firm.com";
+            String s1 = "Test Language Preceding. For compliance matters, contact compliance@firm.com.";
             System.out.println("TEST s1 find? " + pattern.matcher(s1).find());
             assertTrue(pattern.matcher(s1).find());
-            String s2 = "Compliance questions should be sent to info@company.org";
+            String s2 = "Test Language Preceding. Compliance questions should be sent to info@company.org.";
             System.out.println("TEST s2 find? " + pattern.matcher(s2).find());
             assertTrue(pattern.matcher(s2).find());
-            String s3 = "Contact compliance@test.net for regulatory issues";
+            String s3 = "Test Language Preceding. Compliance questions should be sent to compliance@test.net for regulatory issues.";
             System.out.println("TEST s3 find? " + pattern.matcher(s3).find());
             assertTrue(pattern.matcher(s3).find());
-            
-            assertFalse(pattern.matcher("General inquiries: info@firm.com").find()); // No compliance keyword
+
+            assertFalse(pattern.matcher("Test Language Preceding. General inquiries: info@firm.com").find()); // No compliance keyword
             assertFalse(pattern.matcher("Compliance department handles these matters").find()); // No email
         }
         
@@ -320,14 +320,14 @@ public class PatternMatchersTest {
             Pattern pattern = PatternMatchers.EMAIL_PROXY_SENTENCE_PATTERN;
             System.out.println("TEST: EMAIL_PROXY_SENTENCE_PATTERN=" + pattern.pattern());
             
-            String p1 = "Proxy voting questions: proxy@firm.com";
+            String p1 = "Test language preceding. Proxy voting questions: proxy@firm.com.";
             System.out.println("TEST proxy p1 find? " + pattern.matcher(p1).find());
             assertTrue(pattern.matcher(p1).find());
-            assertTrue(pattern.matcher("For proxy matters, email voting@company.org").find());
-            assertTrue(pattern.matcher("Contact proxy@test.net for voting information").find());
-            
-            assertFalse(pattern.matcher("General inquiries: info@firm.com").find()); // No proxy keyword
-            assertFalse(pattern.matcher("Proxy voting is handled internally").find()); // No email
+            assertTrue(pattern.matcher("Test language preceding. For proxy matters, email voting@company.org.").find());
+            assertTrue(pattern.matcher("Test language preceding. For questions on proxy voting policies contact proxy@test.net for voting information.").find());
+
+            assertFalse(pattern.matcher("Test language preceding. General inquiries: info@firm.com").find()); // No proxy keyword
+            assertFalse(pattern.matcher("Test language preceding. Proxy voting is handled internally").find()); // No email
         }
         
         @Test
@@ -336,14 +336,14 @@ public class PatternMatchersTest {
             Pattern pattern = PatternMatchers.EMAIL_BROCHURE_SENTENCE_PATTERN;
             System.out.println("TEST: EMAIL_BROCHURE_SENTENCE_PATTERN=" + pattern.pattern());
             
-            String b1 = "To request our brochure, email brochure@firm.com";
+            String b1 = "Test language preceding. To request our brochure, email brochure@firm.com.";
             System.out.println("TEST brochure b1 find? " + pattern.matcher(b1).find());
             assertTrue(pattern.matcher(b1).find());
-            assertTrue(pattern.matcher("Questions about our services: info@company.org").find());
-            assertTrue(pattern.matcher("Contact brochure@test.net for more information").find());
-            
-            assertFalse(pattern.matcher("General inquiries: info@firm.com").find()); // No brochure/question keyword
-            assertFalse(pattern.matcher("Our brochure is available online").find()); // No email
+            assertTrue(pattern.matcher("Test language preceding. Questions about our services: info@company.org.").find());
+            assertTrue(pattern.matcher("Test language preceding. For our brochure contact brochure@test.net for more information.").find());
+
+            assertFalse(pattern.matcher("Test language preceding. General inquiries: info@firm.com").find()); // No brochure/question keyword
+            assertFalse(pattern.matcher("Test language preceding. Our brochure is available online").find()); // No email
         }
     }
     
@@ -403,11 +403,11 @@ public class PatternMatchersTest {
         void testAPIBrochureVersionIDPattern() {
             Pattern pattern = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN;
             
-            Matcher matcher1 = pattern.matcher("brochureVersionID\": 12345,");
+            Matcher matcher1 = pattern.matcher("brochureVersionID\" : 12345,");
             assertTrue(matcher1.find());
             assertEquals("12345", matcher1.group(1));
             
-            Matcher matcher2 = pattern.matcher("brochureVersionID\": 67890,");
+            Matcher matcher2 = pattern.matcher("brochureVersionID\" : 67890,");
             assertTrue(matcher2.find());
             assertEquals("67890", matcher2.group(1));
             
