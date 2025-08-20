@@ -8,10 +8,14 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import com.iss.iapd.core.IAFirmSECParserRefactored;
 import com.iss.iapd.core.ProcessingContext;
@@ -19,11 +23,22 @@ import com.iss.iapd.core.ProcessingContext;
 /**
  * Test class for force restart functionality
  */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ForceRestartTest {
     
     private Path testDataDir;
     private Path testSubDir;
     private Path testFile;
+    private String testId;
+    
+    @BeforeAll
+    public void setUpClass() throws Exception {
+        // Generate unique test ID to avoid conflicts between test runs
+        testId = UUID.randomUUID().toString().substring(0, 8);
+        
+        // Clean up any existing test directories from previous runs
+        cleanupAllTestDirectories();
+    }
     
     @BeforeEach
     public void setUp() throws Exception {
@@ -33,7 +48,10 @@ public class ForceRestartTest {
         testFile = testDataDir.resolve("test.txt");
         
         // Clean up any existing test directories
-        cleanupTestDirectories();
+        cleanupAllTestDirectories();
+        
+        // Wait a moment to ensure cleanup is complete (Windows file system timing)
+        Thread.sleep(100);
         
         // Create test directory structure
         Files.createDirectories(testSubDir);
@@ -46,33 +64,64 @@ public class ForceRestartTest {
     
     @AfterEach
     public void tearDown() throws Exception {
-        cleanupTestDirectories();
+        // Wait a moment before cleanup to ensure all operations are complete
+        Thread.sleep(100);
+        cleanupAllTestDirectories();
     }
     
-    private void cleanupTestDirectories() throws Exception {
+    @AfterAll
+    public void tearDownClass() throws Exception {
+        // Final cleanup to ensure no test artifacts remain
+        cleanupAllTestDirectories();
+    }
+    
+    private void cleanupAllTestDirectories() throws Exception {
         // Clean up test directories (both Data and any Data_* backup directories)
         File currentDir = new File(".");
         File[] files = currentDir.listFiles();
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory() && (file.getName().equals("Data") || file.getName().startsWith("Data_"))) {
-                    deleteDirectory(file.toPath());
+                    deleteDirectoryRobust(file.toPath());
                 }
             }
         }
     }
     
-    private void deleteDirectory(Path directory) throws Exception {
+    private void deleteDirectoryRobust(Path directory) throws Exception {
         if (Files.exists(directory)) {
-            Files.walk(directory)
-                .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
-                .forEach(path -> {
-                    try {
-                        Files.delete(path);
-                    } catch (Exception e) {
-                        // Ignore deletion errors in test cleanup
+            // Try multiple times to handle Windows file system timing issues
+            int maxAttempts = 3;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    Files.walk(directory)
+                        .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (Exception e) {
+                                // Ignore deletion errors in test cleanup
+                            }
+                        });
+                    
+                    // If directory still exists after walking, try direct deletion
+                    if (Files.exists(directory)) {
+                        Files.delete(directory);
                     }
-                });
+                    
+                    // If we get here without exception, deletion succeeded
+                    break;
+                    
+                } catch (Exception e) {
+                    if (attempt == maxAttempts) {
+                        // Last attempt failed, but don't throw exception to avoid test failures
+                        System.err.println("Warning: Could not delete directory " + directory + " after " + maxAttempts + " attempts: " + e.getMessage());
+                    } else {
+                        // Wait before retry
+                        Thread.sleep(50);
+                    }
+                }
+            }
         }
     }
     
@@ -86,6 +135,9 @@ public class ForceRestartTest {
                 .forceRestart(true)
                 .build();
         
+        // Count existing backup directories before the test
+        int backupCountBefore = countBackupDirectories();
+        
         // Act
         IAFirmSECParserRefactored parser = new IAFirmSECParserRefactored();
         
@@ -95,37 +147,48 @@ public class ForceRestartTest {
         handleForceRestartMethod.setAccessible(true);
         handleForceRestartMethod.invoke(parser, context);
         
+        // Wait a moment for the operation to complete
+        Thread.sleep(100);
+        
         // Assert
         assertFalse(Files.exists(testDataDir), "Original Data directory should no longer exist");
         
-        // Check that a backup directory was created
+        // Check that exactly one new backup directory was created
+        int backupCountAfter = countBackupDirectories();
+        assertEquals(backupCountBefore + 1, backupCountAfter, "Exactly one new backup directory should have been created");
+        
+        // Find and verify the new backup directory
         File currentDir = new File(".");
         File[] files = currentDir.listFiles();
         boolean backupFound = false;
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory() && file.getName().startsWith("Data_")) {
-                    backupFound = true;
                     // Verify the backup contains our test content
                     Path backupTestFile = file.toPath().resolve("test.txt");
-                    assertTrue(Files.exists(backupTestFile), "Backup should contain test file");
-                    
-                    String content = new String(Files.readAllBytes(backupTestFile));
-                    assertEquals("Test content", content, "Backup file should contain original content");
-                    break;
+                    if (Files.exists(backupTestFile)) {
+                        String content = new String(Files.readAllBytes(backupTestFile));
+                        if ("Test content".equals(content)) {
+                            backupFound = true;
+                            break;
+                        }
+                    }
                 }
             }
         }
-        assertTrue(backupFound, "A backup directory with timestamp should have been created");
+        assertTrue(backupFound, "A backup directory with the correct test content should have been created");
     }
     
     @Test
     public void testForceRestartWithoutExistingDataDirectory() throws Exception {
         // Arrange
-        deleteDirectory(testDataDir); // Remove the test data directory
+        deleteDirectoryRobust(testDataDir); // Remove the test data directory
         
         // Wait a moment to ensure directory is fully deleted
-        Thread.sleep(100);
+        Thread.sleep(200);
+        
+        // Verify the directory is actually gone
+        assertFalse(Files.exists(testDataDir), "Data directory should not exist before test");
         
         // Create a processing context with force restart enabled
         ProcessingContext context = ProcessingContext.builder()
@@ -133,16 +196,7 @@ public class ForceRestartTest {
                 .build();
         
         // Count existing backup directories before the test
-        File currentDir = new File(".");
-        File[] filesBefore = currentDir.listFiles();
-        int backupCountBefore = 0;
-        if (filesBefore != null) {
-            for (File file : filesBefore) {
-                if (file.isDirectory() && file.getName().startsWith("Data_")) {
-                    backupCountBefore++;
-                }
-            }
-        }
+        int backupCountBefore = countBackupDirectories();
         
         // Act
         IAFirmSECParserRefactored parser = new IAFirmSECParserRefactored();
@@ -153,20 +207,14 @@ public class ForceRestartTest {
         handleForceRestartMethod.setAccessible(true);
         handleForceRestartMethod.invoke(parser, context);
         
+        // Wait a moment for the operation to complete
+        Thread.sleep(100);
+        
         // Assert
-        // The logging system may create a Data directory, so we check that no NEW backup was created
-        File[] filesAfter = currentDir.listFiles();
-        int backupCountAfter = 0;
-        if (filesAfter != null) {
-            for (File file : filesAfter) {
-                if (file.isDirectory() && file.getName().startsWith("Data_")) {
-                    backupCountAfter++;
-                }
-            }
-        }
+        // Count backup directories after the test
+        int backupCountAfter = countBackupDirectories();
         
         // If there was no Data directory initially, no new backup should be created
-        // (The logging system might create a Data directory, but that's expected)
         assertEquals(backupCountBefore, backupCountAfter, 
             "No new backup directory should have been created when Data directory doesn't exist initially");
     }
@@ -181,6 +229,9 @@ public class ForceRestartTest {
                 .forceRestart(false)
                 .build();
         
+        // Count existing backup directories before the test
+        int backupCountBefore = countBackupDirectories();
+        
         // Act
         IAFirmSECParserRefactored parser = new IAFirmSECParserRefactored();
         
@@ -190,22 +241,33 @@ public class ForceRestartTest {
         handleForceRestartMethod.setAccessible(true);
         handleForceRestartMethod.invoke(parser, context);
         
+        // Wait a moment for the operation to complete
+        Thread.sleep(100);
+        
         // Assert
         assertTrue(Files.exists(testDataDir), "Original Data directory should still exist");
         assertTrue(Files.exists(testFile), "Test file should still exist");
         
-        // Check that no backup directory was created
+        // Check that no new backup directory was created
+        int backupCountAfter = countBackupDirectories();
+        assertEquals(backupCountBefore, backupCountAfter, 
+            "No new backup directory should have been created when force restart is disabled");
+    }
+    
+    /**
+     * Helper method to count backup directories
+     */
+    private int countBackupDirectories() {
         File currentDir = new File(".");
         File[] files = currentDir.listFiles();
-        boolean backupFound = false;
+        int count = 0;
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory() && file.getName().startsWith("Data_")) {
-                    backupFound = true;
-                    break;
+                    count++;
                 }
             }
         }
-        assertFalse(backupFound, "No backup directory should have been created when force restart is disabled");
+        return count;
     }
 }
