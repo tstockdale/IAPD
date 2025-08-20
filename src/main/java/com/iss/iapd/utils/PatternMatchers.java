@@ -48,7 +48,6 @@ public final class PatternMatchers {
     public static final String EMAIL_MATCHER = "(" + EMAIL_PATTERN_BASE + ")";
     public static final String NO_VOTE_MATCHER = "(?:abstain|not vote|do not vote|will not vote|may not vote)";
     public static final String CUSTODIAL_SERVICES_MATCHER = ".{0,200}ustodial.{0,30}services.{0,200}";
-    public static final String API_BRCHR_VERSION_ID_MATCHER = "brochureVersionID..: (\\d+),";
     public static final String BRCHR_VERSION_ID_MATCHER = "BRCHR_VRSN_ID=(\\d+)";
     
     // Compiled patterns with appropriate case sensitivity flags
@@ -73,7 +72,6 @@ public final class PatternMatchers {
     public static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern NO_VOTE_PATTERN = Pattern.compile(NO_VOTE_MATCHER, Pattern.CASE_INSENSITIVE);
     public static final Pattern CUSTODIAL_SERVICES_PATTERN = Pattern.compile(CUSTODIAL_SERVICES_MATCHER, Pattern.CASE_INSENSITIVE);
-    public static final Pattern API_BRCHR_VERSION_ID_PATTERN = Pattern.compile(API_BRCHR_VERSION_ID_MATCHER);
     public static final Pattern BRCHR_VERSION_ID_PATTERN = Pattern.compile(BRCHR_VERSION_ID_MATCHER);
     
     // Private constructor to prevent instantiation

@@ -399,23 +399,6 @@ public class PatternMatchersTest {
     class VersionIDPatternTests {
         
         @Test
-        @DisplayName("Should match API brochure version ID patterns")
-        void testAPIBrochureVersionIDPattern() {
-            Pattern pattern = PatternMatchers.API_BRCHR_VERSION_ID_PATTERN;
-            
-            Matcher matcher1 = pattern.matcher("brochureVersionID\" : 12345,");
-            assertTrue(matcher1.find());
-            assertEquals("12345", matcher1.group(1));
-            
-            Matcher matcher2 = pattern.matcher("brochureVersionID\" : 67890,");
-            assertTrue(matcher2.find());
-            assertEquals("67890", matcher2.group(1));
-            
-            assertFalse(pattern.matcher("brochureVersionID\": abc,").find()); // Non-numeric
-            assertFalse(pattern.matcher("otherField\": 12345,").find()); // Wrong field name
-        }
-        
-        @Test
         @DisplayName("Should match brochure version ID patterns")
         void testBrochureVersionIDPattern() {
             Pattern pattern = PatternMatchers.BRCHR_VERSION_ID_PATTERN;
@@ -462,7 +445,6 @@ public class PatternMatchersTest {
             assertNotNull(PatternMatchers.EMAIL_PATTERN);
             assertNotNull(PatternMatchers.NO_VOTE_PATTERN);
             assertNotNull(PatternMatchers.CUSTODIAL_SERVICES_PATTERN);
-            assertNotNull(PatternMatchers.API_BRCHR_VERSION_ID_PATTERN);
             assertNotNull(PatternMatchers.BRCHR_VERSION_ID_PATTERN);
         }
         
