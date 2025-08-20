@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -25,6 +26,21 @@ import com.iss.iapd.utils.PdfTextExtractor;
  * Provides utilities for reading existing progress, validating files, and calculating resume statistics
  */
 public class ResumeStateManager {
+    
+    // Pattern to validate FirmCrdNb format (should be numeric)
+    private static final Pattern FIRM_CRD_PATTERN = Pattern.compile("^\\d+$");
+    
+    /**
+     * Validates that a FirmCrdNb value has the correct format (numeric)
+     * @param firmCrdNb the FirmCrdNb value to validate
+     * @return true if the FirmCrdNb is valid (numeric), false otherwise
+     */
+    private boolean isValidFirmCrdNb(String firmCrdNb) {
+        if (firmCrdNb == null || firmCrdNb.trim().isEmpty()) {
+            return false;
+        }
+        return FIRM_CRD_PATTERN.matcher(firmCrdNb.trim()).matches();
+    }
     
     /**
      * Resume statistics container
@@ -83,8 +99,10 @@ public class ResumeStateManager {
                     String firmCrdNb = record.get("FirmCrdNb");
                     String downloadStatus = record.get("DownloadStatus");
                     
-                    if (firmCrdNb != null && !firmCrdNb.trim().isEmpty()) {
+                    if (isValidFirmCrdNb(firmCrdNb)) {
                         statusMap.put(firmCrdNb.trim(), downloadStatus != null ? downloadStatus.trim() : "");
+                    } else if (firmCrdNb != null && !firmCrdNb.trim().isEmpty()) {
+                        ProcessingLogger.logWarning("Skipping record with invalid FirmCrdNb format: " + firmCrdNb);
                     }
                 } catch (Exception e) {
                     // Skip malformed records
@@ -125,8 +143,10 @@ public class ResumeStateManager {
             for (CSVRecord record : records) {
                 try {
                     String firmCrdNb = record.get("FirmCrdNb");
-                    if (firmCrdNb != null && !firmCrdNb.trim().isEmpty()) {
+                    if (isValidFirmCrdNb(firmCrdNb)) {
                         processedFirms.add(firmCrdNb.trim());
+                    } else if (firmCrdNb != null && !firmCrdNb.trim().isEmpty()) {
+                        ProcessingLogger.logWarning("Skipping record with invalid FirmCrdNb format: " + firmCrdNb);
                     }
                 } catch (Exception e) {
                     // Skip malformed records
