@@ -67,12 +67,17 @@ public class BrochureAnalyzer {
     private static class ProxyProviderAnalysisStrategy implements AnalysisStrategy {
         @Override
         public void analyze(String text, BrochureAnalysis analysis) {
+            // First, check for specific providers
             addProviderIfFound(PatternMatchers.GLASS_LEWIS_PATTERN, text, analysis.getProxyProvider(), "Glass Lewis");
             addProviderIfFound(PatternMatchers.BROADRIDGE_PATTERN, text, analysis.getProxyProvider(), "BroadRidge");
             addProviderIfFound(PatternMatchers.PROXYEDGE_PATTERN, text, analysis.getProxyProvider(), "ProxyEdge");
             addProviderIfFound(PatternMatchers.EGAN_JONES_PATTERN, text, analysis.getProxyProvider(), "Egan-Jones");
             addProviderIfFound(PatternMatchers.ISS_PROXY_PATTERN, text, analysis.getProxyProvider(), "ISS");
-            addProviderIfFound(PatternMatchers.THIRD_PARTY_PROXY_PATTERN, text, analysis.getProxyProvider(), "Third Party");
+            
+            // Only add "Third Party" if no specific providers were found
+            if (analysis.getProxyProvider().length() == 0) {
+                addProviderIfFound(PatternMatchers.THIRD_PARTY_PROXY_PATTERN, text, analysis.getProxyProvider(), "Third Party");
+            }
         }
     }
     
@@ -144,7 +149,12 @@ public class BrochureAnalyzer {
             Matcher matcher = PatternMatchers.NO_VOTE_PATTERN.matcher(text);
             if (matcher.find()) {
                 analysis.getNoVoteString().append(matcher.group(0));
+                // Add "Does Not Vote" if no provider is set, or replace "Third Party" with "Does Not Vote"
                 if (analysis.getProxyProvider().length() == 0) {
+                    analysis.getProxyProvider().append("Does Not Vote");
+                } else if ("Third Party".equals(analysis.getProxyProvider().toString())) {
+                    // Replace "Third Party" with "Does Not Vote" as it's more specific
+                    analysis.getProxyProvider().setLength(0);
                     analysis.getProxyProvider().append("Does Not Vote");
                 }
             }
@@ -166,4 +176,5 @@ public class BrochureAnalyzer {
             }
         }
     }
+
 }

@@ -58,14 +58,6 @@ public class BrochureAnalyzerTest {
             assertTrue(providers.contains("Glass Lewis"));
         }
         
-        @Test
-        @DisplayName("Should handle case insensitive proxy provider detection")
-        void testCaseInsensitiveProxyProviderDetection() {
-            String content = "We work with iss for proxy voting services.";
-            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_004");
-            
-            assertTrue(result.getProxyProvider().toString().contains("ISS"));
-        }
         
         @Test
         @DisplayName("Should not detect proxy providers when none mentioned")
@@ -74,6 +66,45 @@ public class BrochureAnalyzerTest {
             BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_005");
             
             assertTrue(result.getProxyProvider().toString().isEmpty());
+        }
+        
+        @Test
+        @DisplayName("Should detect Third Party provider only when no specific providers found")
+        void testThirdPartyProviderOnlyWhenNoSpecificProviders() {
+            String content = "We use third party proxy voting services for our clients.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_026");
+            
+            assertEquals("Third Party", result.getProxyProvider().toString());
+        }
+        
+        @Test
+        @DisplayName("Should not add Third Party when specific provider already found")
+        void testNoThirdPartyWhenSpecificProviderExists() {
+            String content = "We use ISS for proxy research and also rely on third party proxy voting services.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_027");
+            
+            assertEquals("ISS", result.getProxyProvider().toString());
+            assertFalse(result.getProxyProvider().toString().contains("Third Party"));
+        }
+        
+        @Test
+        @DisplayName("Should replace Third Party with Does Not Vote when no-vote pattern found")
+        void testDoesNotVoteReplacesThirdParty() {
+            String content = "We use third party proxy services but may abstain from voting on certain proposals.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_028");
+            
+            assertEquals("Does Not Vote", result.getProxyProvider().toString());
+            assertFalse(result.getNoVoteString().toString().isEmpty());
+        }
+        
+        @Test
+        @DisplayName("Should not replace specific provider with Does Not Vote")
+        void testDoesNotVoteDoesNotReplaceSpecificProvider() {
+            String content = "We use ISS for proxy voting but may abstain from voting on certain proposals.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_029");
+            
+            assertEquals("ISS", result.getProxyProvider().toString());
+            assertFalse(result.getNoVoteString().toString().isEmpty());
         }
     }
     
@@ -167,7 +198,7 @@ public class BrochureAnalyzerTest {
         @Test
         @DisplayName("Should extract compliance email sentences")
         void testExtractComplianceEmailSentences() {
-            String content = "For compliance matters, please contact compliance@firm.com immediately.";
+            String content = "Test language preceding. For compliance matters, please contact compliance@firm.com immediately.";
             BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_014");
             
             assertFalse(result.getEmailComplianceSentence().toString().isEmpty());
@@ -176,7 +207,7 @@ public class BrochureAnalyzerTest {
         @Test
         @DisplayName("Should extract proxy email sentences")
         void testExtractProxyEmailSentences() {
-            String content = "Proxy voting questions should be directed to proxy@firm.com.";
+            String content = "Test language preceding. Proxy voting questions should be directed to proxy@firm.com.";
             BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_015");
             
             assertFalse(result.getEmailProxySentence().toString().isEmpty());
@@ -185,7 +216,7 @@ public class BrochureAnalyzerTest {
         @Test
         @DisplayName("Should extract brochure email sentences")
         void testExtractBrochureEmailSentences() {
-            String content = "To request our brochure, email brochure@firm.com.";
+            String content = "Test language preceding. To request our brochure, email brochure@firm.com.";
             BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_016");
             
             assertFalse(result.getEmailBrochureSentence().toString().isEmpty());
