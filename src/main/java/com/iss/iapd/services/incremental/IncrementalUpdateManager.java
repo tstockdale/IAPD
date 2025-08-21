@@ -27,7 +27,6 @@ import com.iss.iapd.model.FirmData;
 public class IncrementalUpdateManager {
     
     private static final String DATE_FORMAT = "MM/dd/yyyy";
-    private static final SimpleDateFormat dateFormatter = new SimpleDateFormat(DATE_FORMAT);
     
     /**
      * Incremental update statistics container
@@ -74,8 +73,19 @@ public class IncrementalUpdateManager {
             return null;
         }
         
+        String trimmed = dateString.trim();
+        
+        // Check if the format matches MM/dd/yyyy pattern
+        if (!trimmed.matches("\\d{2}/\\d{2}/\\d{4}")) {
+            ProcessingLogger.logWarning("Invalid date format: " + dateString + " (expected MM/dd/yyyy)");
+            return null;
+        }
+        
+        SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
+        formatter.setLenient(false); // Strict parsing - reject invalid dates like 02/29/2023
+        
         try {
-            return dateFormatter.parse(dateString.trim());
+            return formatter.parse(trimmed);
         } catch (ParseException e) {
             ProcessingLogger.logWarning("Failed to parse filing date: " + dateString + " - " + e.getMessage());
             return null;

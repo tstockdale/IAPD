@@ -155,7 +155,16 @@ public class IAFirmSECParserRefactored {
             
             // Rename the existing Data directory
             Files.move(dataDirectory, backupDirectory);
-            
+
+            // Assert and log that Data directory no longer exists
+            if (Files.exists(dataDirectory)) {
+                ProcessingLogger.logError("Data directory still exists after rename!", null);
+                System.err.println("ERROR: Data directory still exists after rename!");
+            } else {
+                ProcessingLogger.logInfo("Data directory successfully removed after rename.");
+                System.out.println("Data directory successfully removed after rename.");
+            }
+
             ProcessingLogger.logInfo("=== FORCE RESTART EXECUTED ===");
             ProcessingLogger.logInfo("Existing Data directory renamed to: " + backupDirName);
             ProcessingLogger.logInfo("Starting fresh with new Data directory");
