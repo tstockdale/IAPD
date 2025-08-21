@@ -28,27 +28,20 @@ import com.iss.iapd.services.xml.XMLProcessingService;
  */
 public class IAFirmSECParserRefactored {
     
-    private final XMLProcessingService xmlProcessingService;
-    private final BrochureURLExtractionService brochureURLExtractionService;
-    private final BrochureDownloadService brochureDownloadService;
-    private final BrochureProcessingService brochureProcessingService;
-    private final FileDownloadService fileDownloadService;
-    private final ConfigurationManager configurationManager;
-    private final MonthlyDownloadService monthlyDownloadService;
-    
-    public IAFirmSECParserRefactored() {
-        // Initialize services with dependency injection
-        this.fileDownloadService = new FileDownloadService();
-        this.xmlProcessingService = new XMLProcessingService();
-        this.brochureURLExtractionService = new BrochureURLExtractionService();
-        this.brochureDownloadService = new BrochureDownloadService(fileDownloadService);
-        this.configurationManager = new ConfigurationManager();
-        this.monthlyDownloadService = new MonthlyDownloadService(fileDownloadService);
-        
-        BrochureAnalyzer brochureAnalyzer = new BrochureAnalyzer();
-        CSVWriterService csvWriterService = new CSVWriterService();
-        this.brochureProcessingService = new BrochureProcessingService(brochureAnalyzer, csvWriterService);
-    }
+    @com.google.inject.Inject
+    private XMLProcessingService xmlProcessingService;
+    @com.google.inject.Inject
+    private BrochureURLExtractionService brochureURLExtractionService;
+    @com.google.inject.Inject
+    private BrochureDownloadService brochureDownloadService;
+    @com.google.inject.Inject
+    private BrochureProcessingService brochureProcessingService;
+    @com.google.inject.Inject
+    private FileDownloadService fileDownloadService;
+    @com.google.inject.Inject
+    private MonthlyDownloadService monthlyDownloadService;
+    @com.google.inject.Inject
+    private ConfigurationManager configurationManager;
     
     /**
      * Initializes the logging system early to ensure log files are created in the correct location
@@ -86,37 +79,38 @@ public class IAFirmSECParserRefactored {
     public static void main(String[] args) {
         // Initialize logging system early - MUST be first to ensure log files are created properly
         initializeLoggingSystem();
-        
-        IAFirmSECParserRefactored parser = new IAFirmSECParserRefactored();
-        
+
+        com.google.inject.Injector injector = com.google.inject.Guice.createInjector(new com.iss.iapd.config.IapdModule());
+        IAFirmSECParserRefactored parser = injector.getInstance(IAFirmSECParserRefactored.class);
+
         try {
             // Build processing context from all configuration sources
             ProcessingContext context = parser.configurationManager.buildContext(args);
-            
+
             // Check if help was requested from the built context
             if (context.isShowHelp()) {
                 CommandLineOptions.printUsage();
                 return;
             }
-            
+
             // Validate configuration
             if (!parser.configurationManager.validateConfiguration(context)) {
                 System.err.println("Configuration validation failed. Exiting.");
                 System.exit(1);
             }
-            
+
             // Log startup information
             ProcessingLogger.logInfo("Working Directory = " + System.getProperty("user.dir"));
             parser.configurationManager.printEffectiveConfiguration(context);
-            
+
             // Start processing with three distinct steps
             context.setCurrentPhase(ProcessingPhase.INITIALIZATION);
             parser.processIAPDDataInSteps(context);
-            
+
             // Mark completion
             context.setCurrentPhase(ProcessingPhase.COMPLETED);
             context.logCurrentState();
-            
+
         } catch (IllegalArgumentException e) {
             System.err.println("Error: " + e.getMessage());
             System.err.println();
