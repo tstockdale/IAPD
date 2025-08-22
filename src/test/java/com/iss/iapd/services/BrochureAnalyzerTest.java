@@ -1,6 +1,7 @@
 package com.iss.iapd.services;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -78,6 +79,45 @@ public class BrochureAnalyzerTest {
             BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_005");
             
             assertTrue(result.getProxyProvider().toString().isEmpty());
+        }
+        
+        @Test
+        @DisplayName("Should detect Third Party provider only when no specific providers found")
+        void testThirdPartyProviderOnlyWhenNoSpecificProviders() {
+            String content = "We use third party proxy voting services for our clients.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_026");
+            
+            assertEquals("Third Party", result.getProxyProvider().toString());
+        }
+        
+        @Test
+        @DisplayName("Should not add Third Party when specific provider already found")
+        void testNoThirdPartyWhenSpecificProviderExists() {
+            String content = "We use ISS for proxy research and also rely on third party proxy voting services.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_027");
+            
+            assertEquals("ISS", result.getProxyProvider().toString());
+            assertFalse(result.getProxyProvider().toString().contains("Third Party"));
+        }
+        
+        @Test
+        @DisplayName("Should replace Third Party with Does Not Vote when no-vote pattern found")
+        void testDoesNotVoteReplacesThirdParty() {
+            String content = "We use third party proxy services but may abstain from voting on certain proposals.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_028");
+            
+            assertEquals("Does Not Vote", result.getProxyProvider().toString());
+            assertFalse(result.getNoVoteString().toString().isEmpty());
+        }
+        
+        @Test
+        @DisplayName("Should not replace specific provider with Does Not Vote")
+        void testDoesNotVoteDoesNotReplaceSpecificProvider() {
+            String content = "We use ISS for proxy voting but may abstain from voting on certain proposals.";
+            BrochureAnalysis result = analyzer.analyzeBrochureContent(content, "TEST_FIRM_029");
+            
+            assertEquals("ISS", result.getProxyProvider().toString());
+            assertFalse(result.getNoVoteString().toString().isEmpty());
         }
     }
     

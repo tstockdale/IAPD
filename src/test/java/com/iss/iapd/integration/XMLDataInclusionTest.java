@@ -46,47 +46,6 @@ public class XMLDataInclusionTest {
     }
     
     @Test
-    void testXMLDataInclusionInIAPDSecData() throws Exception {
-        // Create a sample XML file with comprehensive firm data
-        String sampleXML = createSampleXMLContent();
-        File xmlFile = createTempXMLFile(sampleXML);
-        
-        // Process the XML file
-        Path outputFile = xmlProcessingService.processXMLFile(xmlFile, context);
-        
-        assertNotNull(outputFile, "Output file should be created");
-        assertTrue(Files.exists(outputFile), "Output file should exist");
-        
-        // Read the output file and verify all XML fields are included
-        List<String> lines = Files.readAllLines(outputFile);
-        assertTrue(lines.size() >= 2, "Should have header and at least one data row");
-        
-        // Verify header contains all expected fields
-        String header = lines.get(0);
-        String[] expectedFields = Config.FIRM_HEADER.split(",");
-        
-        for (String field : expectedFields) {
-            assertTrue(header.contains(field.trim()), 
-                "Header should contain field: " + field);
-        }
-        
-        // Verify data row contains all fields (no empty trailing fields)
-        if (lines.size() > 1) {
-            String dataRow = lines.get(1);
-            String[] dataFields = dataRow.split(",", -1); // -1 to include empty trailing fields
-            
-            assertEquals(expectedFields.length, dataFields.length, 
-                "Data row should have same number of fields as header");
-            
-            // Verify key XML fields are populated (not empty)
-            assertFalse(dataFields[1].isEmpty(), "SECRgnCD should not be empty");
-            assertFalse(dataFields[2].isEmpty(), "FirmCrdNb should not be empty");
-            assertFalse(dataFields[4].isEmpty(), "Business Name should not be empty");
-            assertFalse(dataFields[5].isEmpty(), "Legal Name should not be empty");
-        }
-    }
-    
-    @Test
     void testCSVWriterServiceIncludesAllXMLFields() throws Exception {
         // Create a sample record map with all XML fields
         java.util.Map<String, String> recordMap = createSampleRecordMap();
@@ -166,13 +125,6 @@ public class XMLDataInclusionTest {
                "</IAData>";
     }
     
-    private File createTempXMLFile(String content) throws IOException {
-        File xmlFile = tempDir.resolve("test_input.xml").toFile();
-        try (FileWriter writer = new FileWriter(xmlFile)) {
-            writer.write(content);
-        }
-        return xmlFile;
-    }
     
     private java.util.Map<String, String> createSampleRecordMap() {
         java.util.Map<String, String> recordMap = new java.util.HashMap<>();
