@@ -44,11 +44,11 @@ check_data_mount() {
     fi
     
     # Create subdirectories if they don't exist
-    mkdir -p /app/Data/Downloads
-    mkdir -p /app/Data/Output
-    mkdir -p /app/Data/Input
-    mkdir -p /app/Data/FirmFiles
-    mkdir -p /app/Data/Logs
+    #mkdir -p /app/Data/Downloads
+    #mkdir -p /app/Data/Output
+    #mkdir -p /app/Data/Input
+    #mkdir -p /app/Data/FirmFiles
+    #mkdir -p /app/Data/Logs
     
     # Check if the mount is writable
     if [ ! -w "/app/Data" ]; then

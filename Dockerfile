@@ -40,10 +40,10 @@ WORKDIR /app
 COPY --from=builder /build/target/iapd-1.0.0-SNAPSHOT-all.jar ./iapd.jar
 
 # Create the Data directory structure
-RUN mkdir -p Data/Downloads Data/Output Data/Input Data/FirmFiles Data/Logs
+#RUN mkdir -p Data/Downloads Data/Output Data/Input Data/FirmFiles Data/Logs
 
 # Copy the entrypoint script
-COPY docker-entrypoint.sh ./
+COPY ./scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # Change ownership to the iapd user
