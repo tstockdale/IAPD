@@ -1,0 +1,117 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: iapd-scheduled-job
+  namespace: iapd
+  labels:
+    app: investment-adviser-parser
+    component: scheduled-processor
+    version: "1.0.0"
+spec:
+  # Schedule: Run daily at 2 AM UTC (adjust as needed)
+  schedule: "0 2 * * *"
+  
+  # Timezone (optional, defaults to UTC)
+  timeZone: "UTC"
+  
+  # Job history limits
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Concurrency policy
+  concurrencyPolicy: Forbid  # Don't allow overlapping jobs
+  
+  # Starting deadline seconds
+  startingDeadlineSeconds: 300  # 5 minutes
+  
+  # Suspend the cron job (set to true to disable)
+  suspend: true  # Start with suspended, enable manually when needed
+  
+  jobTemplate:
+    metadata:
+      labels:
+        app: investment-adviser-parser
+        component: scheduled-processor
+    spec:
+      # Job will be automatically deleted after 7 days
+      ttlSecondsAfterFinished: 604800  # 7 days
+      
+      # Backoff limit for failed attempts
+      backoffLimit: 2
+      
+      template:
+        metadata:
+          labels:
+            app: investment-adviser-parser
+            component: scheduled-processor
+        spec:
+          restartPolicy: Never
+          
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          
+          containers:
+          - name: iapd-parser
+            image: iapd:latest
+            imagePullPolicy: Never  # Use local image built from Dockerfile
+            
+            # Environment variables from ConfigMap
+            envFrom:
+            - configMapRef:
+                name: iapd-config
+            
+            # Additional environment variables
+            env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: JOB_TYPE
+              value: "scheduled"
+            
+            # Resource limits and requests
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "4Gi"
+                cpu: "2000m"
+            
+            # Volume mounts
+            volumeMounts:
+            - name: iapd-data
+              mountPath: /app/Data
+            
+            # Working directory
+            workingDir: /app
+            
+            # Command and arguments for scheduled run
+            # You can customize these for scheduled processing
+            args: ["--verbose", "--incremental"]
+            
+            # Startup probe
+            startupProbe:
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - "test -f /app/iapd.jar"
+              initialDelaySeconds: 5
+              periodSeconds: 5
+              timeoutSeconds: 5
+              failureThreshold: 3
+          
+          volumes:
+          - name: iapd-data
+            persistentVolumeClaim:
+              claimName: iapd-data-pvc
+---

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iapd-config
+  namespace: iapd
+  labels:
+    app: investment-adviser-parser
+    component: configuration
+data:
+  # Java JVM options
+  JAVA_OPTS: "-Xmx4g -Xms1g -XX:+UseG1GC -XX:+UseStringDeduplication"
+  
+  # Logging configuration
+  LOG_LEVEL: "INFO"
+  LOG_PATH: "/app/Data/Logs"
+  
+  # Application configuration
+  PROCESSING_MODE: "batch"
+  
+  # Default command line arguments (can be overridden in Job spec)
+  DEFAULT_ARGS: "--verbose"
+---
