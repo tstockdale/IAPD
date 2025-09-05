@@ -114,182 +114,178 @@ metadata:
 data:
   kubernetes-cluster.json: |
     {
-      "dashboard": {
-        "id": null,
-        "title": "Kubernetes Cluster Monitoring",
-        "tags": ["kubernetes"],
-        "style": "dark",
-        "timezone": "browser",
-        "panels": [
-          {
-            "id": 1,
-            "title": "CPU Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "sum(rate(container_cpu_usage_seconds_total[5m])) by (pod)",
-                "legendFormat": "{{pod}}"
-              }
-            ],
-            "xAxis": {
-              "show": true
-            },
-            "yAxes": [
-              {
-                "label": "CPU Usage",
-                "show": true
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 12,
-              "x": 0,
-              "y": 0
+      "id": null,
+      "title": "Kubernetes Cluster Monitoring",
+      "tags": ["kubernetes"],
+      "style": "dark",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total[5m])) by (pod)",
+              "legendFormat": "{{pod}}"
             }
+          ],
+          "xAxis": {
+            "show": true
           },
-          {
-            "id": 2,
-            "title": "Memory Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "sum(container_memory_usage_bytes) by (pod)",
-                "legendFormat": "{{pod}}"
-              }
-            ],
-            "xAxis": {
+          "yAxes": [
+            {
+              "label": "CPU Usage",
               "show": true
-            },
-            "yAxes": [
-              {
-                "label": "Memory Usage (Bytes)",
-                "show": true
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 12,
-              "x": 12,
-              "y": 0
             }
-          },
-          {
-            "id": 3,
-            "title": "IAPD Job Status",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "kube_job_status_succeeded{namespace=\"iapd\"}",
-                "legendFormat": "Successful Jobs"
-              },
-              {
-                "expr": "kube_job_status_failed{namespace=\"iapd\"}",
-                "legendFormat": "Failed Jobs"
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 24,
-              "x": 0,
-              "y": 8
-            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
           }
-        ],
-        "time": {
-          "from": "now-1h",
-          "to": "now"
         },
-        "refresh": "30s"
-      }
+        {
+          "id": 2,
+          "title": "Memory Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(container_memory_usage_bytes) by (pod)",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "xAxis": {
+            "show": true
+          },
+          "yAxes": [
+            {
+              "label": "Memory Usage (Bytes)",
+              "show": true
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "IAPD Job Status",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "kube_job_status_succeeded{namespace=\"iapd\"}",
+              "legendFormat": "Successful Jobs"
+            },
+            {
+              "expr": "kube_job_status_failed{namespace=\"iapd\"}",
+              "legendFormat": "Failed Jobs"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          }
+        }
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "30s"
     }
 
   iapd-jobs.json: |
     {
-      "dashboard": {
-        "id": null,
-        "title": "IAPD Job Monitoring",
-        "tags": ["iapd", "jobs"],
-        "style": "dark",
-        "timezone": "browser",
-        "panels": [
-          {
-            "id": 1,
-            "title": "Job Completion Rate",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "kube_job_status_succeeded{namespace=\"iapd\"}",
-                "legendFormat": "Successful"
-              }
-            ],
-            "gridPos": {
-              "h": 6,
-              "w": 8,
-              "x": 0,
-              "y": 0
+      "id": null,
+      "title": "IAPD Job Monitoring",
+      "tags": ["iapd", "jobs"],
+      "style": "dark",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Job Completion Rate",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "kube_job_status_succeeded{namespace=\"iapd\"}",
+              "legendFormat": "Successful"
             }
-          },
-          {
-            "id": 2,
-            "title": "Job Failure Rate",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "kube_job_status_failed{namespace=\"iapd\"}",
-                "legendFormat": "Failed"
-              }
-            ],
-            "gridPos": {
-              "h": 6,
-              "w": 8,
-              "x": 8,
-              "y": 0
-            }
-          },
-          {
-            "id": 3,
-            "title": "Active Jobs",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "kube_job_status_active{namespace=\"iapd\"}",
-                "legendFormat": "Active"
-              }
-            ],
-            "gridPos": {
-              "h": 6,
-              "w": 8,
-              "x": 16,
-              "y": 0
-            }
-          },
-          {
-            "id": 4,
-            "title": "Pod Resource Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"iapd\"}[5m])) by (pod)",
-                "legendFormat": "CPU - {{pod}}"
-              },
-              {
-                "expr": "sum(container_memory_usage_bytes{namespace=\"iapd\"}) by (pod)",
-                "legendFormat": "Memory - {{pod}}"
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 24,
-              "x": 0,
-              "y": 6
-            }
+          ],
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 0,
+            "y": 0
           }
-        ],
-        "time": {
-          "from": "now-6h",
-          "to": "now"
         },
-        "refresh": "1m"
-      }
+        {
+          "id": 2,
+          "title": "Job Failure Rate",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "kube_job_status_failed{namespace=\"iapd\"}",
+              "legendFormat": "Failed"
+            }
+          ],
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 8,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "Active Jobs",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "kube_job_status_active{namespace=\"iapd\"}",
+              "legendFormat": "Active"
+            }
+          ],
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 16,
+            "y": 0
+          }
+        },
+        {
+          "id": 4,
+          "title": "Pod Resource Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"iapd\"}[5m])) by (pod)",
+              "legendFormat": "CPU - {{pod}}"
+            },
+            {
+              "expr": "sum(container_memory_usage_bytes{namespace=\"iapd\"}) by (pod)",
+              "legendFormat": "Memory - {{pod}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          }
+        }
+      ],
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "refresh": "1m"
     }
 ---

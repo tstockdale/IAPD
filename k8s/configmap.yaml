@@ -18,5 +18,5 @@ data:
   PROCESSING_MODE: "batch"
   
   # Default command line arguments (can be overridden in Job spec)
-  DEFAULT_ARGS: "--verbose"
+  DEFAULT_ARGS: "--verbose --url-rate 100 --download-rate 100 --incremental"
 ---
