@@ -240,26 +240,12 @@ public class IAFirmSECParserRefactored {
                 }
             } else if (context.isResumeURLExtraction()) {
                 // Resume URL extraction mode: Skip Step 1, resume from Step 2
-                Path filesToDownload = handleResumeURLExtraction(context);
-                if (filesToDownload == null) {
+                // The handleResumeURLExtraction method now handles all subsequent steps automatically
+                Path finalResult = handleResumeURLExtraction(context);
+                if (finalResult == null) {
                     return; // Error already logged or no work to do
                 }
-                
-                // Step 3: Download brochure PDF files
-                Path filesToDownloadWithStatus = downloadBrochures(filesToDownload, context);
-                if (filesToDownloadWithStatus == null) {
-                    return; // Error already logged
-                }
-                
-                // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
-                // Find the corresponding firm data file for processing
-                Path firmDataFile = findCorrespondingFirmDataFileForURLExtraction();
-                if (firmDataFile != null) {
-                    processBrochures(firmDataFile, filesToDownloadWithStatus, context);
-                } else {
-                    ProcessingLogger.logWarning("Could not find corresponding firm data file for brochure processing");
-                    ProcessingLogger.logInfo("Resume URL extraction completed, but skipping brochure processing step");
-                }
+                // All steps (URL extraction, downloading, processing) are now handled in handleResumeURLExtraction
             } else {
                 // Standard mode: Four-step processing
                 
@@ -463,12 +449,26 @@ public class IAFirmSECParserRefactored {
                 return null;
             }
             
-            // Resume URL extraction from the determined point
+            // FIXED: Use the existing FilesToDownload file and append new URLs to it
+            // The BrochureURLExtractionService will detect resume mode and append to existing file
             Path outputFilePath = brochureURLExtractionService.processFirmDataForBrochures(firmDataFile.toFile(), context);
             
             if (outputFilePath != null) {
-                ProcessingLogger.logInfo("Resume URL extraction completed. FilesToDownload file: " + outputFilePath);
-                return outputFilePath;
+                ProcessingLogger.logInfo("Resume URL extraction completed. Updated FilesToDownload file: " + outputFilePath);
+                
+                // FIXED: Continue with brochure downloading after URL extraction
+                ProcessingLogger.logInfo("Proceeding to brochure download stage...");
+                Path filesToDownloadWithStatus = downloadBrochures(outputFilePath, context);
+                if (filesToDownloadWithStatus == null) {
+                    ProcessingLogger.logWarning("Brochure download failed, but URL extraction was successful");
+                    return outputFilePath; // Return the URL extraction result even if download fails
+                }
+                
+                // FIXED: Continue with brochure processing after downloading
+                ProcessingLogger.logInfo("Proceeding to brochure processing stage...");
+                processBrochures(firmDataFile, filesToDownloadWithStatus, context);
+                
+                return filesToDownloadWithStatus;
             } else {
                 context.setLastError("Failed to resume URL extraction");
                 context.setCurrentPhase(ProcessingPhase.ERROR);
