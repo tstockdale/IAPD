@@ -19,8 +19,6 @@ import javax.net.ssl.X509TrustManager;
 
 import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
-import com.iss.iapd.utils.RetryUtils;
-import com.iss.iapd.utils.RateLimiter;
 
 /**
  * Centralized HTTP utility class with enforced timeouts, user-agent, and retry/backoff logic.
@@ -511,7 +509,18 @@ public class HttpUtils {
     private static void logDownloadInfo(HttpsURLConnection connection, String fileName) {
         ProcessingLogger.logInfo("Content-Type = " + connection.getContentType());
         ProcessingLogger.logInfo("Content-Disposition = " + connection.getHeaderField("Content-Disposition"));
-        ProcessingLogger.logInfo("Content-Length = " + connection.getContentLength());
+        
+        // Enhanced content length logging
+        int contentLength = connection.getContentLength();
+        String contentLengthStr = contentLength == -1 ? "Unknown (not specified by server)" : String.valueOf(contentLength);
+        ProcessingLogger.logInfo("Content-Length = " + contentLengthStr);
+        
+        // Log Transfer-Encoding header if present
+        String transferEncoding = connection.getHeaderField("Transfer-Encoding");
+        if (transferEncoding != null && !transferEncoding.trim().isEmpty()) {
+            ProcessingLogger.logInfo("Transfer-Encoding = " + transferEncoding);
+        }
+        
         ProcessingLogger.logInfo("fileName = " + fileName);
     }
     

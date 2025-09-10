@@ -35,10 +35,20 @@ public class BrochureProcessingService {
     
     private final BrochureAnalyzer brochureAnalyzer;
     private final CSVWriterService csvWriterService;
+    private final BrochureProcessingStatistics statistics;
     
     public BrochureProcessingService(BrochureAnalyzer brochureAnalyzer, CSVWriterService csvWriterService) {
         this.brochureAnalyzer = brochureAnalyzer;
         this.csvWriterService = csvWriterService;
+        this.statistics = new BrochureProcessingStatistics();
+    }
+    
+    /**
+     * Gets the statistics collector for this service
+     * @return the BrochureProcessingStatistics instance
+     */
+    public BrochureProcessingStatistics getStatistics() {
+        return statistics;
     }
     
     /**
@@ -51,11 +61,20 @@ public class BrochureProcessingService {
         ProcessingLogger.logInfo("Starting brochure processing from file: " + inputFilePath);
         context.setCurrentProcessingFile(inputFilePath.getFileName().toString());
         
-        // Check if resume processing is enabled
-        if (context.isResumeProcessing()) {
-            processBrochuresWithResume(inputFilePath, context);
-        } else {
-            processBrochuresStandard(inputFilePath, context);
+        // Initialize statistics collection
+        statistics.startProcessing();
+        
+        try {
+            // Check if resume processing is enabled
+            if (context.isResumeProcessing()) {
+                statistics.recordResumedProcessing();
+                processBrochuresWithResume(inputFilePath, context);
+            } else {
+                processBrochuresStandard(inputFilePath, context);
+            }
+        } finally {
+            // Print comprehensive summary statistics
+            statistics.printComprehensiveSummary();
         }
     }
     
@@ -171,12 +190,17 @@ public class BrochureProcessingService {
         String brochureURL = recordMap.get("BrochureURL");
         String firmCrdNb = recordMap.get("FirmCrdNb");
         
+        // Record file processing
+        statistics.recordFileProcessed();
+        
         if (brochureURL == null || brochureURL.isEmpty()) {
+            statistics.recordFileSkipped();
             return;
         }
         
         Matcher matcher = PatternMatchers.BRCHR_VERSION_ID_PATTERN.matcher(brochureURL);
         if (!matcher.find()) {
+            statistics.recordFileSkipped();
             return;
         }
         
@@ -185,6 +209,7 @@ public class BrochureProcessingService {
         
         File brochureFile = new File(parentFolder, fileName);
         if (!brochureFile.exists()) {
+            statistics.recordFileSkipped();
             return;
         }
         
@@ -193,10 +218,16 @@ public class BrochureProcessingService {
             BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text, firmCrdNb);
             csvWriterService.writeBrochureAnalysis(writer, recordMap, analysis, brochureFile.getName(), brochureURL);
             
+            // Record successful analysis with statistics
+            statistics.recordSuccessfulAnalysis(analysis);
+            
             // Update context with successful brochure processing
             context.incrementBrochuresProcessed();
             
         } catch (Exception e) {
+            // Record failed analysis with statistics
+            statistics.recordFailedAnalysis(e.getMessage());
+            
             // Log error but continue processing other brochures
             ProcessingLogger.logError("Error processing brochure for firm " + firmCrdNb + ": " + e.getMessage(), e);
             if (context.isVerbose()) {
@@ -263,11 +294,14 @@ public class BrochureProcessingService {
         ProcessingLogger.logInfo("Firm data file: " + firmDataFile);
         ProcessingLogger.logInfo("FilesToDownload file: " + filesToDownloadWithStatus);
         
-        // Create output file path for IAPD_Data
-        String outputFileName = "IAPD_Data_" + java.time.LocalDate.now().toString().replace("-", "") + ".csv";
-        Path outputFilePath = Paths.get(Config.BROCHURE_OUTPUT_PATH, outputFileName);
+        // Initialize statistics collection
+        statistics.startProcessing();
         
         try {
+            // Create output file path for IAPD_Data
+            String outputFileName = "IAPD_Data_" + java.time.LocalDate.now().toString().replace("-", "") + ".csv";
+            Path outputFilePath = Paths.get(Config.BROCHURE_OUTPUT_PATH, outputFileName);
+            
             // Load firm data map (keyed by FirmCrdNb) - contains all XML data
             java.util.Map<String, CSVRecord> firmDataMap = loadFirmDataMap(firmDataFile);
             ProcessingLogger.logInfo("Loaded " + firmDataMap.size() + " firm records from IAPD_SEC_DATA file");
@@ -308,12 +342,16 @@ public class BrochureProcessingService {
                                 processSingleBrochureWithMerge(firmRecord, downloadInfo, writer, context);
                                 processedCount++;
                                 
-                                // Log progress periodically if verbose
+                                // Log progress periodically with statistics summary
                                 if (context.isVerbose() && processedCount % 50 == 0) {
                                     ProcessingLogger.logInfo("Processed " + processedCount + " brochures so far...");
+                                    statistics.printProgressSummary();
                                     context.logCurrentState();
                                 }
                             } else {
+                                // Record skipped file
+                                statistics.recordFileSkipped();
+                                
                                 // Log skipped records if verbose
                                 if (context.isVerbose()) {
                                     ProcessingLogger.logInfo("Skipping brochure for firm " + downloadInfo.firmId + 
@@ -323,8 +361,12 @@ public class BrochureProcessingService {
                             }
                         }
                     } else {
-                        // Count all brochures for this firm as unmatched
+                        // Count all brochures for this firm as unmatched and skipped
                         totalRecords += brochures.size();
+                        for (int i = 0; i < brochures.size(); i++) {
+                            statistics.recordFileSkipped();
+                        }
+                        
                         if (context.isVerbose()) {
                             ProcessingLogger.logWarning("No firm data found for firmId: " + firmId + " (" + brochures.size() + " brochures skipped)");
                         }
@@ -339,20 +381,23 @@ public class BrochureProcessingService {
                 
             }
             
+            // Process dual file output strategy (dated file + master file)
+            DualFileOutputService dualFileOutputService = new DualFileOutputService();
+            Path masterFilePath = dualFileOutputService.processDualFileOutput(outputFilePath);
+            
+            if (masterFilePath != null) {
+                ProcessingLogger.logInfo("Dual file output processing completed successfully.");
+                ProcessingLogger.logInfo("Master file: " + masterFilePath);
+            } else {
+                ProcessingLogger.logWarning("Dual file output processing failed, but dated file was created successfully.");
+            }
+            
         } catch (Exception e) {
             context.setLastError("Error in brochure processing with merge: " + e.getMessage());
             throw new BrochureProcessingException("Error in brochure processing with merge", e);
-        }
-        
-        // Process dual file output strategy (dated file + master file)
-        DualFileOutputService dualFileOutputService = new DualFileOutputService();
-        Path masterFilePath = dualFileOutputService.processDualFileOutput(outputFilePath);
-        
-        if (masterFilePath != null) {
-            ProcessingLogger.logInfo("Dual file output processing completed successfully.");
-            ProcessingLogger.logInfo("Master file: " + masterFilePath);
-        } else {
-            ProcessingLogger.logWarning("Dual file output processing failed, but dated file was created successfully.");
+        } finally {
+            // Print comprehensive summary statistics
+            statistics.printComprehensiveSummary();
         }
     }
     
@@ -426,8 +471,12 @@ public class BrochureProcessingService {
     private void processSingleBrochureWithMerge(CSVRecord firmRecord, DownloadInfo downloadInfo, Writer writer, ProcessingContext context) throws Exception {
         File brochureFile = new File(Config.DOWNLOAD_PATH, downloadInfo.fileName);
         
+        // Record file processing
+        statistics.recordFileProcessed();
+        
         if (!brochureFile.exists()) {
             ProcessingLogger.logWarning("Brochure file not found: " + downloadInfo.fileName);
+            statistics.recordFileSkipped();
             return;
         }
         
@@ -438,10 +487,16 @@ public class BrochureProcessingService {
             // Write merged data to IAPD_Data format
             writeMergedBrochureAnalysis(writer, firmRecord, analysis, downloadInfo);
             
+            // Record successful analysis with statistics
+            statistics.recordSuccessfulAnalysis(analysis);
+            
             // Update context with successful brochure processing
             context.incrementBrochuresProcessed();
             
         } catch (Exception e) {
+            // Record failed analysis with statistics
+            statistics.recordFailedAnalysis(e.getMessage());
+            
             // Log error but continue processing other brochures
             ProcessingLogger.logError("Error processing brochure for firm " + downloadInfo.firmId + ": " + e.getMessage(), e);
             if (context.isVerbose()) {

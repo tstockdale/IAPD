@@ -1,6 +1,6 @@
 {
     // Maven Project Configuration
-    "java.configuration.maven.userSettings": null,
+    "java.configuration.maven.userSettings": "",
     "java.configuration.updateBuildConfiguration": "automatic",
     "java.maven.downloadSources": true,
     "java.maven.downloadJavadoc": true,
@@ -53,12 +53,12 @@
     // Maven Integration
     "maven.executable.path": "mvn",
     "maven.terminal.useJavaHome": true,
-    "maven.view": "hierarchical",
+    "maven.view": "flat",
     
     // Code Completion and IntelliSense
     "java.completion.enabled": true,
     "java.completion.overwrite": true,
-    "java.completion.guessMethodArguments": true,
+    "java.completion.guessMethodArguments": "auto",
     "java.completion.favoriteStaticMembers": [
         "org.junit.jupiter.api.Assertions.*",
         "org.junit.jupiter.api.Assumptions.*",

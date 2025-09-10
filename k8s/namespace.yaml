@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iapd
+  labels:
+    name: iapd
+    app: investment-adviser-parser
+    environment: development
+---

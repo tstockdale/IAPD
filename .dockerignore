@@ -1,0 +1,76 @@
+# Docker ignore file for IAPD project
+# Excludes unnecessary files from the Docker build context
+
+# Git files
+.git
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# Build artifacts (will be built inside container)
+target/
+*.jar
+*.war
+*.ear
+
+# Test output
+test-output/
+surefire-reports/
+
+# Data directories (will be mounted as volumes)
+Data/
+Logs/
+
+# Documentation (not needed in container)
+docs/
+*.md
+README*
+
+# Batch and shell scripts (except entrypoint)
+*.bat
+*.sh
+!docker-entrypoint.sh
+
+# Docker files (not needed inside container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Maven wrapper (using container's Maven)
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE workspace files
+*.code-workspace
+
+# Log files
+*.log
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# Node modules (if any)
+node_modules/
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+*.pyo
+
+# Backup files
+*.bak
+*.backup
