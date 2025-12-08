@@ -1,9 +1,14 @@
 package com.iss.iapd.services.download;
 
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
-import com.iss.iapd.exceptions.FileDownloadException;
-import com.iss.iapd.utils.HttpUtils;    
+import com.iss.iapd.config.Config;
+import com.iss.iapd.config.ProcessingLogger;
+import com.iss.iapd.utils.HttpUtils;
+import com.iss.iapd.utils.HttpUtils.HttpRequestConfig;    
 
 /**
  * Service class responsible for file download operations
@@ -25,48 +30,121 @@ public class FileDownloadService {
         }
     }
     
-    /**
-     * Downloads the latest IAPD data file from SEC website
-     * @param outputPath The directory where the file should be saved
-     * @return The downloaded file
-     * @throws FileDownloadException if download fails
+    
+
+     /**
+     * Downloads the latest IAPD XML data file from SEC website with enhanced retry logic
      */
-    public Path downloadLatestIAPDData(String outputPath) throws FileDownloadException {
-        try {
-            return HttpUtils.downloadLatestIAPDData(outputPath);
-        } catch (Exception e) {
-            throw new FileDownloadException("Failed to download latest IAPD data", e);
+    public Path downloadLatestIAPDData(String outputPath) throws Exception {
+        HttpRequestConfig config = new HttpRequestConfig()
+            .maxRetries(HttpUtils.MAX_RETRIES)
+            .connectTimeout(45000)  // Longer timeout for large files
+            .readTimeout(120000);   // 2 minutes for large downloads
+        
+        // Get current date to determine the latest available file
+        java.util.Calendar currentDate = java.util.Calendar.getInstance();
+        
+        // Try current date first, then previous days if not available
+        for (int dayOffset = 0; dayOffset <= 7; dayOffset++) {
+            java.util.Calendar targetDate = (java.util.Calendar) currentDate.clone();
+            targetDate.add(java.util.Calendar.DAY_OF_MONTH, -dayOffset);
+            
+            int month = targetDate.get(java.util.Calendar.MONTH) + 1; // Calendar months are 0-based
+            int day = targetDate.get(java.util.Calendar.DAY_OF_MONTH);
+            int year = targetDate.get(java.util.Calendar.YEAR);
+            
+            String monthStr = String.format("%02d", month);
+            String dayStr = String.format("%02d", day);
+            String yearStr = String.valueOf(year);
+            
+            // Format: IA_FIRM_SEC_Feed_07_28_2025.xml.gz
+            String fileName = String.format("IA_FIRM_SEC_Feed_%s_%s_%s.xml.gz", monthStr, dayStr, yearStr);
+            String downloadUrl = String.format("https://reports.adviserinfo.sec.gov/reports/CompilationReports/%s", fileName);
+            
+            try {
+                ProcessingLogger.logInfo("Attempting to download: " + downloadUrl);
+                Path downloadedFile = HttpUtils.downloadHTTPSFile(downloadUrl, fileName, config);
+                
+                if (downloadedFile != null && Files.exists(downloadedFile)) {
+                    ProcessingLogger.logInfo("Successfully downloaded IAPD XML data: " + fileName);
+                    return downloadedFile;
+                }
+            } catch (Exception e) {
+                ProcessingLogger.logWarning("Failed to download " + fileName + ": " + e.getMessage());
+                // Continue to try previous day
+            }
         }
+        
+        throw new Exception("Could not download IAPD XML data file. No recent files available.");
     }
     
-    /**
-     * Downloads a specific IAPD data file by date
-     * @param year The year (e.g., 2025)
-     * @param month The month (1-12)
-     * @param outputPath The directory where the file should be saved
-     * @return The downloaded file
-     * @throws FileDownloadException if download fails
+
+
+        /**
+     * Downloads a specific IAPD data file by date with enhanced retry logic
      */
-    public Path downloadIAPDDataByDate(int year, int month, String outputPath) throws FileDownloadException {
-        try {
-            return HttpUtils.downloadIAPDDataByDate(year, month, outputPath);
-        } catch (Exception e) {
-            throw new FileDownloadException("Failed to download IAPD data for " + month + "/" + year, e);
+    public Path downloadIAPDDataByDate(int year, int month, String outputPath) throws Exception {
+        HttpRequestConfig config = new HttpRequestConfig()
+            .maxRetries(HttpUtils.MAX_RETRIES)
+            .connectTimeout(45000)
+            .readTimeout(120000);
+        
+        String monthStr = String.format("%02d", month);
+        String yearStr = String.valueOf(year);
+        
+        // Format: ia070125.zip (July 2025)
+        String fileName = String.format("IA_FIRM_SEC_Feed_ia%s01%s.xml.gz", monthStr, yearStr.substring(2));
+        String downloadUrl = String.format("https://reports.adviserinfo.sec.gov/reports/CompilationReports/%s", fileName);
+        
+        ProcessingLogger.logInfo("Downloading IAPD data: " + downloadUrl);
+        Path downloadedFile = HttpUtils.downloadHTTPSFile(downloadUrl, fileName, config);
+        
+        if (downloadedFile != null && Files.exists(downloadedFile)) {
+            ProcessingLogger.logInfo("Successfully downloaded IAPD data: " + fileName);
+            return downloadedFile;
+        } else {
+            throw new Exception("Failed to download IAPD data file: " + fileName);
         }
     }
     
     /**
      * Extracts a GZ file to the specified directory
-     * @param gzFile The GZ file to extract
-     * @param extractToDir The directory to extract to
-     * @return The extracted file
-     * @throws FileDownloadException if extraction fails
      */
-    public Path extractGZFile(Path gzFile, String extractToDir) throws FileDownloadException {
+    public Path extractGZFile(Path gzFile, String extractToDir) throws Exception {
+        Path extractDir = Paths.get(extractToDir);
+        Files.createDirectories(extractDir);
+        
+        java.util.zip.GZIPInputStream gzIn = null;
+        OutputStream bos = null;
+        Path extractedFile = null;
+        
         try {
-            return HttpUtils.extractGZFile(gzFile, extractToDir);
-        } catch (Exception e) {
-            throw new FileDownloadException("Failed to extract GZ file: " + gzFile.getFileName(), e);
+            gzIn = new java.util.zip.GZIPInputStream(Files.newInputStream(gzFile));
+            
+            // Determine the output file name by removing .gz extension
+            String originalFileName = gzFile.getFileName().toString();
+            String extractedFileName = originalFileName.endsWith(".gz") ? 
+                originalFileName.substring(0, originalFileName.length() - 3) : 
+                originalFileName + ".extracted";
+            
+            extractedFile = extractDir.resolve(extractedFileName);
+            bos = Files.newOutputStream(extractedFile);
+            
+            byte[] buffer = new byte[Config.BUFFER_SIZE];
+            int bytesRead;
+            while ((bytesRead = gzIn.read(buffer)) != -1) {
+                bos.write(buffer, 0, bytesRead);
+            }
+            
+            ProcessingLogger.logInfo("Extracted GZ file: " + extractedFileName);
+            return extractedFile;
+            
+        } finally {
+            if (bos != null) bos.close();
+            if (gzIn != null) gzIn.close();
         }
     }
+    
+
+
 }

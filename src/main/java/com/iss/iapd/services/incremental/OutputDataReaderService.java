@@ -18,6 +18,7 @@ import org.apache.commons.csv.QuoteMode;
 
 import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
+import com.iss.iapd.utils.CsvUtils;
 
 /**
  * Service for reading output data files to determine incremental processing parameters
@@ -91,7 +92,7 @@ public class OutputDataReaderService {
         String maxDateSubmitted = getMaxDateSubmitted(file);
         Date maxDateSubmittedParsed = parseDate(maxDateSubmitted);
         Set<String> existingBrochureVersionIds = getBrochureVersionIds(file);
-        int totalRecords = countRecords(file);
+        int totalRecords = CsvUtils.countRecordsInFile(file);
         
         ProcessingLogger.logInfo("Output data analysis complete:");
         ProcessingLogger.logInfo("  - Latest file: " + file.getFileName());
@@ -275,30 +276,6 @@ public class OutputDataReaderService {
         }
     }
     
-    /**
-     * Counts the total number of records in a CSV file
-     * 
-     * @param csvFile the file to count
-     * @return the number of records (excluding header)
-     */
-    public int countRecords(Path csvFile) {
-        int count = 0;
-        try (Reader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .build()
-                    .parse(reader);
-            
-            for (CSVRecord record : records) {
-                count++;
-            }
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error counting records in file: " + csvFile, e);
-        }
-        return count;
-    }
     
     /**
      * Extracts date string from output filename for comparison

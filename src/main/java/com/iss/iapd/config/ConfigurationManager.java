@@ -9,6 +9,7 @@ import java.util.Set;
 
 import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.services.incremental.OutputDataReaderService;
+import com.iss.iapd.utils.CsvUtils;
 
 /**
  * Manages configuration from multiple sources with priority ordering:
@@ -204,7 +205,7 @@ public class ConfigurationManager {
                 
                 // Extract brochure version IDs from master file
                 Set<String> existingBrochureVersionIds = outputReader.getBrochureVersionIds(masterFile);
-                int totalRecords = outputReader.countRecords(masterFile);
+                int totalRecords = CsvUtils.countRecordsInFile(masterFile);
                 
                 ProcessingLogger.logInfo("Existing brochure version IDs: " + existingBrochureVersionIds.size());
                 ProcessingLogger.logInfo("Total existing records: " + totalRecords);

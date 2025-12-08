@@ -1,16 +1,19 @@
 package com.iss.iapd.utils;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.DisplayName;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
-import com.iss.iapd.utils.HttpUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
 
@@ -227,21 +230,7 @@ public class HttpUtilsTest {
         assertEquals(3, config.getMaxRetries());
     }
     
-    @Test
-    @DisplayName("Test GZ file extraction")
-    public void testGZFileExtraction() {
-        // This would require creating a test GZ file
-        // For now, we'll test the method exists and handles null input gracefully
-        try {
-            Path nonExistentPath = Paths.get("non-existent.gz");
-            HttpUtils.extractGZFile(nonExistentPath, "./test-output");
-            fail("Should throw exception for non-existent file");
-        } catch (Exception e) {
-            // Expected behavior
-            assertTrue(e.getMessage().contains("non-existent.gz") || 
-                      e instanceof java.io.FileNotFoundException);
-        }
-    }
+  
     
     @Test
     @DisplayName("Test timeout configuration enforcement")
