@@ -5,7 +5,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +13,6 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
 
-import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
 
 /**
@@ -67,7 +65,7 @@ public class DualFileOutputService {
         Files.copy(datedFilePath, masterFilePath, StandardCopyOption.REPLACE_EXISTING);
         
         // Count records for logging
-        int recordCount = countRecordsInFile(datedFilePath);
+        int recordCount = com.iss.iapd.utils.CsvUtils.countRecordsInFile(datedFilePath);
         
         ProcessingLogger.logInfo("Created master file: " + masterFilePath);
         ProcessingLogger.logInfo("Copied " + recordCount + " records from dated file to master file.");
@@ -171,26 +169,4 @@ public class DualFileOutputService {
         writer.write(System.lineSeparator());
     }
     
-    /**
-     * Counts the number of records in a CSV file (excluding header)
-     */
-    private int countRecordsInFile(Path csvFile) {
-        int count = 0;
-        try (Reader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setQuoteMode(QuoteMode.MINIMAL)
-                    .build()
-                    .parse(reader);
-            
-            for (CSVRecord record : records) {
-                count++;
-            }
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error counting records in file: " + csvFile, e);
-        }
-        return count;
-    }
 }

@@ -19,11 +19,6 @@ public final class PatternMatchers {
         return String.format("(?:%s[^.]*?class action|class action[^.]*?%s)", company, company);
     }
     
-    // Helper method to create email sentence patterns
-    private static String createEmailSentencePattern(String keyword) {
-        // Allow any characters between keyword and email within a line; reuse EMAIL_MATCHER
-        return String.format(".*?%s.*?%s", keyword, EMAIL_MATCHER);
-    }
     
     // Simplified regex patterns for various providers and services
     public static final String GLASS_LEWIS_MATCHER = "Glass[\\s,-]*Lewis\\??";

@@ -4,6 +4,7 @@ import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -190,7 +191,7 @@ public class HttpUtils {
             rateLimiter.acquire();
         }
         
-        URL url = new URL(urlString);
+        URL url =  URI.create(urlString).toURL();
         HttpsURLConnection connection = null;
         InputStream inputStream = null;
         
@@ -284,7 +285,7 @@ public class HttpUtils {
             rateLimiter.acquire();
         }
         
-        URL url = new URL(urlString);
+        URL url = URI.create(urlString).toURL();
         HttpsURLConnection connection = null;
         OutputStream outputStream = null;
         InputStream inputStream = null;

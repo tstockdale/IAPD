@@ -11,9 +11,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import com.iss.iapd.config.Config;
-import com.iss.iapd.utils.HttpUtils;
-import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.config.ProcessingLogger;
+import com.iss.iapd.core.ProcessingContext;
+import com.iss.iapd.utils.HttpUtils;
 
 
 /**
@@ -22,10 +22,8 @@ import com.iss.iapd.config.ProcessingLogger;
  */
 public class MonthlyDownloadService {
     
-    private final FileDownloadService fileDownloadService;
     
     public MonthlyDownloadService(FileDownloadService fileDownloadService) {
-        this.fileDownloadService = fileDownloadService;
     }
     
     /**

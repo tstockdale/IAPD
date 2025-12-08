@@ -153,7 +153,8 @@ public class BrochureAnalyzer {
                 if (analysis.getProxyProvider().length() == 0) {
                     analysis.getProxyProvider().append("Does Not Vote");
                 } else if ("Third Party".equals(analysis.getProxyProvider().toString())) {
-                    // Replace "Third Party" with "Does Not Vote" as it's more specific
+                    // Replace "Third Party" with "Does Not Vote" since not voting means no third party involvement
+                    // should verify this: may be research from third party
                     analysis.getProxyProvider().setLength(0);
                     analysis.getProxyProvider().append("Does Not Vote");
                 }

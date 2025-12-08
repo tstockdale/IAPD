@@ -9,11 +9,9 @@ import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ConfigurationManager;
 import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.model.ProcessingPhase;
-import com.iss.iapd.services.brochure.BrochureAnalyzer;
 import com.iss.iapd.services.brochure.BrochureDownloadService;
 import com.iss.iapd.services.brochure.BrochureProcessingService;
 import com.iss.iapd.services.brochure.BrochureURLExtractionService;
-import com.iss.iapd.services.csv.CSVWriterService;
 import com.iss.iapd.services.download.FileDownloadService;
 import com.iss.iapd.services.download.MonthlyDownloadService;
 import com.iss.iapd.services.xml.XMLProcessingService;
@@ -533,32 +531,6 @@ public class IAFirmSECParserRefactored {
         }
     }
     
-    /**
-     * Finds the corresponding firm data file for URL extraction resume processing
-     * Uses the ResumeURLExtractionService to get the correct firm data file
-     * @return path to firm data file, or null if not found
-     */
-    private Path findCorrespondingFirmDataFileForURLExtraction() {
-        try {
-            com.iss.iapd.services.incremental.ResumeURLExtractionService resumeService = new com.iss.iapd.services.incremental.ResumeURLExtractionService();
-            com.iss.iapd.services.incremental.ResumeURLExtractionService.ResumeInfo resumeInfo = resumeService.checkResumeCapability();
-            
-            if (resumeInfo != null) {
-                Path firmDataFile = resumeInfo.getFirmDataPath();
-                if (firmDataFile != null && Files.exists(firmDataFile)) {
-                    ProcessingLogger.logInfo("Found firm data file for URL extraction resume: " + firmDataFile.getFileName());
-                    return firmDataFile;
-                }
-            }
-            
-            ProcessingLogger.logWarning("Could not find firm data file for URL extraction resume");
-            return null;
-            
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error finding corresponding firm data file for URL extraction", e);
-            return null;
-        }
-    }
     
     /**
      * Finds the corresponding firm data file for brochure processing

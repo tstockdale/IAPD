@@ -7,27 +7,25 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.QuoteMode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.core.ProcessingContext;
-import com.iss.iapd.utils.RateLimiter;
 import com.iss.iapd.exceptions.BrochureProcessingException;
-import com.iss.iapd.utils.RetryUtils;
-import com.iss.iapd.config.Config;
-import com.iss.iapd.utils.HttpUtils;
-import com.iss.iapd.services.incremental.OutputDataReaderService;
 import com.iss.iapd.services.incremental.ResumeURLExtractionService;
+import com.iss.iapd.utils.HttpUtils;
+import com.iss.iapd.utils.RateLimiter;
+import com.iss.iapd.utils.RetryUtils;
 
 /**
  * Service class responsible for extracting brochure URLs from FIRM_API JSON responses

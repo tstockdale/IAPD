@@ -123,7 +123,7 @@ public class BrochureProcessingService {
         java.util.Set<String> processedFirms = resumeManager.getProcessedFirms(outputFilePath);
         
         // Calculate resume statistics
-        int totalFirms = countRecordsInFile(inputFilePath);
+        int totalFirms = com.iss.iapd.utils.CsvUtils.countRecordsInFile(inputFilePath);
         ResumeStateManager.ResumeStats stats = resumeManager.calculateProcessingResumeStats(totalFirms, processedFirms);
         
         // Log resume statistics
@@ -257,29 +257,6 @@ public class BrochureProcessingService {
         } catch (Exception e) {
             throw new BrochureProcessingException("Error processing single PDF: " + pdfPath, e);
         }
-    }
-    
-    /**
-     * Counts the number of records in a CSV file
-     */
-    private int countRecordsInFile(Path csvFile) {
-        int count = 0;
-        try (Reader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setQuoteMode(QuoteMode.MINIMAL)
-                    .build()
-                    .parse(reader);
-            
-            for (CSVRecord record : records) {
-                count++;
-            }
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error counting records in file: " + csvFile, e);
-        }
-        return count;
     }
     
     /**
@@ -534,88 +511,8 @@ public class BrochureProcessingService {
         writer.write(System.lineSeparator());
     }
     
-    /**
-     * Processes a single brochure from FilesToDownload record
-     */
-    private void processSingleBrochureFromFilesToDownload(CSVRecord csvRecord, Writer writer, ProcessingContext context) throws Exception {
-        String firmId = csvRecord.get("firmId");
-        String fileName = csvRecord.get("fileName");
-        String brochureVersionId = csvRecord.get("brochureVersionId");
-        
-        File brochureFile = new File(Config.DOWNLOAD_PATH, fileName);
-        
-        if (!brochureFile.exists()) {
-            ProcessingLogger.logWarning("Brochure file not found: " + fileName);
-            return;
-        }
-        
-        try (FileInputStream stream = new FileInputStream(brochureFile)) {
-            String text = PdfTextExtractor.getCleanedBrochureText(stream);
-            BrochureAnalysis analysis = brochureAnalyzer.analyzeBrochureContent(text, firmId);
-            
-            // Write record with all FilesToDownload fields + brochure analysis fields
-            writeFilesToDownloadWithAnalysis(writer, csvRecord, analysis, brochureVersionId);
-            
-            // Update context with successful brochure processing
-            context.incrementBrochuresProcessed();
-            
-        } catch (Exception e) {
-            // Log error but continue processing other brochures
-            ProcessingLogger.logError("Error processing brochure for firm " + firmId + ": " + e.getMessage(), e);
-            if (context.isVerbose()) {
-                context.setLastError("Error processing brochure for firm " + firmId + ": " + e.getMessage());
-            }
-        }
-    }
-    
-    /**
-     * Writes a record with all FilesToDownload fields plus brochure analysis fields
-     */
-    private void writeFilesToDownloadWithAnalysis(Writer writer, CSVRecord csvRecord, BrochureAnalysis analysis, String brochureVersionId) throws Exception {
-        StringBuilder record = new StringBuilder();
-        
-        // Add timestamp
-        record.append(Config.getCurrentDateString()).append(",");
-        
-        // Add all FilesToDownload fields
-        record.append(csvEscape(csvRecord.get("firmId"))).append(",");
-        record.append(csvEscape(csvRecord.get("firmName"))).append(",");
-        record.append(csvEscape(csvRecord.get("brochureVersionId"))).append(",");
-        record.append(csvEscape(csvRecord.get("brochureName"))).append(",");
-        record.append(csvEscape(csvRecord.get("dateSubmitted"))).append(",");
-        record.append(csvEscape(csvRecord.get("dateConfirmed"))).append(",");
-        record.append(csvEscape(csvRecord.get("downloadStatus"))).append(",");
-        record.append(csvEscape(csvRecord.get("fileName"))).append(",");
-        
-        // Add brochure analysis fields
-        record.append(csvEscape(analysis.getProxyProvider().toString())).append(",");
-        record.append(csvEscape(analysis.getClassActionProvider().toString())).append(",");
-        record.append(csvEscape(analysis.getEsgProvider().toString())).append(",");
-        record.append(csvEscape(analysis.getEsgInvestmentLanguage().toString())).append(",");
-        record.append(csvEscape(Config.BROCHURE_URL_BASE + brochureVersionId)).append(",");
-        
-        // Add email fields
-        record.append(csvEscape(analysis.getEmailComplianceSentence().toString())).append(",");
-        record.append(csvEscape(analysis.getEmailProxySentence().toString())).append(",");
-        record.append(csvEscape(analysis.getEmailBrochureSentence().toString())).append(",");
-        record.append(csvEscape(analysis.getEmailSentence().toString())).append(",");
-        record.append(csvEscape(analysis.getFormattedEmailSetString())).append(",");
-        record.append(csvEscape(analysis.getNoVoteString().toString()));
-        
-        writer.write(record.toString());
-        writer.write(System.lineSeparator());
-    }
-    
-    /**
-     * Helper method to escape CSV values
-     */
-    private String csvEscape(String value) {
-        if (value == null) return "";
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replaceAll("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
+   
+
     
     /**
      * Inner class to hold download information
