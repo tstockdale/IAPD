@@ -339,16 +339,12 @@ public class ProcessingContext {
         return builder()
                 .indexLimit(options.getIndexLimit())
                 .verbose(options.isVerbose())
-                .resumeDownloads(options.isResumeDownloads())
-                .resumeProcessing(options.isResumeProcessing())
-                .resumeURLExtraction(options.isResumeURLExtraction())
-                .validatePdfs(options.isValidatePdfs())
+
                 .forceRestart(options.isForceRestart())
                 .incrementalUpdates(options.isIncrementalUpdates())
                 .incrementalDownloads(options.isIncrementalDownloads())
                 .incrementalProcessing(options.isIncrementalProcessing())
                 .baselineFilePath(options.getBaselineFilePath())
-                .monthName(options.getMonthName())
                 .showHelp(options.isShowHelp())
                 // If CLI specified rate overrides, apply them; otherwise builder defaults hold
                 .urlRatePerSecond(options.getURLRatePerSecond() != null ? options.getURLRatePerSecond() : 1)

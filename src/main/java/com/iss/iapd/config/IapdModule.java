@@ -7,7 +7,6 @@ import com.iss.iapd.services.brochure.BrochureProcessingService;
 import com.iss.iapd.services.brochure.BrochureURLExtractionService;
 import com.iss.iapd.services.csv.CSVWriterService;
 import com.iss.iapd.services.download.FileDownloadService;
-import com.iss.iapd.services.download.MonthlyDownloadService;
 import com.iss.iapd.services.xml.XMLProcessingService;
 
 public class IapdModule extends AbstractModule {
@@ -17,7 +16,6 @@ public class IapdModule extends AbstractModule {
         bind(XMLProcessingService.class).toInstance(new XMLProcessingService());
         bind(BrochureURLExtractionService.class).toInstance(new BrochureURLExtractionService());
         bind(BrochureDownloadService.class).toInstance(new BrochureDownloadService(new FileDownloadService()));
-        bind(MonthlyDownloadService.class).toInstance(new MonthlyDownloadService(new FileDownloadService()));
         bind(BrochureAnalyzer.class).toInstance(new BrochureAnalyzer());
         bind(CSVWriterService.class).toInstance(new CSVWriterService());
         bind(BrochureProcessingService.class).toInstance(

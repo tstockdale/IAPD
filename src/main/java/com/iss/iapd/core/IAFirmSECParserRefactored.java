@@ -13,7 +13,6 @@ import com.iss.iapd.services.brochure.BrochureDownloadService;
 import com.iss.iapd.services.brochure.BrochureProcessingService;
 import com.iss.iapd.services.brochure.BrochureURLExtractionService;
 import com.iss.iapd.services.download.FileDownloadService;
-import com.iss.iapd.services.download.MonthlyDownloadService;
 import com.iss.iapd.services.xml.XMLProcessingService;
 
 /**
@@ -36,8 +35,6 @@ public class IAFirmSECParserRefactored {
     private BrochureProcessingService brochureProcessingService;
     @com.google.inject.Inject
     private FileDownloadService fileDownloadService;
-    @com.google.inject.Inject
-    private MonthlyDownloadService monthlyDownloadService;
     @com.google.inject.Inject
     private ConfigurationManager configurationManager;
     
@@ -198,76 +195,29 @@ public class IAFirmSECParserRefactored {
             handleForceRestart(context);
             
             _setUpDirectories();
-            
-            // Check if monthly mode is enabled
-            if (context.getMonthName() != null && (context.isIncrementalUpdates() || 
-                context.isIncrementalDownloads() || context.isIncrementalProcessing())) {
+
+            // Standard mode: Four-step processing
                 
-                // Monthly mode: Download and extract monthly brochure data
-                Path monthlyDataPath = monthlyDownloadService.downloadAndExtractMonthlyData(context.getMonthName(), context);
-                if (monthlyDataPath == null) {
-                    return; // Error already logged
-                }
-                
-                // Process the monthly brochure data directly
-                processMonthlyBrochures(monthlyDataPath, context);
-                
-            } else if (context.isResumeDownloads()) {
-                // Resume downloads mode: Skip Steps 1 & 2, resume from Step 3
-                Path filesToDownloadWithStatus = handleResumeDownloads(context);
-                if (filesToDownloadWithStatus == null) {
-                    return; // Error already logged or no work to do
-                }
-                
-                // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
-                // Find the corresponding firm data file for processing
-                com.iss.iapd.services.incremental.ResumeDownloadsService resumeService = new com.iss.iapd.services.incremental.ResumeDownloadsService();
-                Path filesToDownload = resumeService.findFilesToDownload();
-                if (filesToDownload != null) {
-                    // For resume mode, we need to find the original firm data file
-                    // This is a simplified approach - in practice you might need more sophisticated matching
-                    Path firmDataFile = findCorrespondingFirmDataFile();
-                    if (firmDataFile != null) {
-                        processBrochures(firmDataFile, filesToDownloadWithStatus, context);
-                    } else {
-                        ProcessingLogger.logWarning("Could not find corresponding firm data file for brochure processing");
-                        ProcessingLogger.logInfo("Resume downloads completed, but skipping brochure processing step");
-                    }
-                } else {
-                    ProcessingLogger.logWarning("Could not find FilesToDownload file for brochure processing");
-                }
-            } else if (context.isResumeURLExtraction()) {
-                // Resume URL extraction mode: Skip Step 1, resume from Step 2
-                // The handleResumeURLExtraction method now handles all subsequent steps automatically
-                Path finalResult = handleResumeURLExtraction(context);
-                if (finalResult == null) {
-                    return; // Error already logged or no work to do
-                }
-                // All steps (URL extraction, downloading, processing) are now handled in handleResumeURLExtraction
-            } else {
-                // Standard mode: Four-step processing
-                
-                // Step 1: Download XML and extract firm data (without brochure URLs)
-                Path firmDataFile = downloadAndParseXMLData(context);
-                if (firmDataFile == null) {
-                    return; // Error already logged
-                }
-                
-                // Step 2: Extract brochure URLs and create FilesToDownload
-                Path filesToDownload = extractBrochureURLs(firmDataFile, context);
-                if (filesToDownload == null) {
-                    return; // Error already logged
-                }
-                
-                // Step 3: Download brochure PDF files
-                Path filesToDownloadWithStatus = downloadBrochures(filesToDownload, context);
-                if (filesToDownloadWithStatus == null) {
-                    return; // Error already logged
-                }
-                
-                // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
-                processBrochures(firmDataFile, filesToDownloadWithStatus, context);
+            // Step 1: Download XML and extract firm data (without brochure URLs)
+            Path firmDataFile = downloadAndParseXMLData(context);
+            if (firmDataFile == null) {
+                return; // Error already logged
             }
+                
+            // Step 2: Extract brochure URLs and create FilesToDownload
+            Path filesToDownload = extractBrochureURLs(firmDataFile, context);
+            if (filesToDownload == null) {
+                return; // Error already logged
+            }
+                
+            // Step 3: Download brochure PDF files
+            Path filesToDownloadWithStatus = downloadBrochures(filesToDownload, context);
+            if (filesToDownloadWithStatus == null) {
+                return; // Error already logged
+            }
+                
+            // Step 4: Process and analyze brochures, merge data and save as IAPD_Data
+            processBrochures(firmDataFile, filesToDownloadWithStatus, context);
             
         } catch (Exception e) {
             context.setLastError("Error in IAPD data processing: " + e.getMessage());
@@ -418,184 +368,6 @@ public class IAFirmSECParserRefactored {
         }
     }
     
-    /**
-     * Handles resume URL extraction functionality
-     * @param context processing context
-     * @return path to FilesToDownload file, or null if failed/no work
-     */
-    private Path handleResumeURLExtraction(ProcessingContext context) {
-        try {
-            context.setCurrentPhase(ProcessingPhase.EXTRACTING_BROCHURE_URLS);
-            ProcessingLogger.logInfo("=== RESUME URL EXTRACTION MODE ===");
-            
-            com.iss.iapd.services.incremental.ResumeURLExtractionService resumeService = new com.iss.iapd.services.incremental.ResumeURLExtractionService();
-            
-            // Check if resume is possible
-            com.iss.iapd.services.incremental.ResumeURLExtractionService.ResumeInfo resumeInfo = resumeService.checkResumeCapability();
-            if (resumeInfo == null) {
-                ProcessingLogger.logInfo("Resume URL extraction not possible or not needed");
-                return null;
-            }
-            
-            // Log resume statistics
-            resumeService.logResumeStats(resumeInfo);
-            
-            // Find the corresponding firm data file to continue processing
-            Path firmDataFile = resumeInfo.getFirmDataPath();
-            if (firmDataFile == null || !Files.exists(firmDataFile)) {
-                ProcessingLogger.logError("Could not find corresponding firm data file for resume URL extraction", null);
-                return null;
-            }
-            
-            // FIXED: Use the existing FilesToDownload file and append new URLs to it
-            // The BrochureURLExtractionService will detect resume mode and append to existing file
-            Path outputFilePath = brochureURLExtractionService.processFirmDataForBrochures(firmDataFile.toFile(), context);
-            
-            if (outputFilePath != null) {
-                ProcessingLogger.logInfo("Resume URL extraction completed. Updated FilesToDownload file: " + outputFilePath);
-                
-                // FIXED: Continue with brochure downloading after URL extraction
-                ProcessingLogger.logInfo("Proceeding to brochure download stage...");
-                Path filesToDownloadWithStatus = downloadBrochures(outputFilePath, context);
-                if (filesToDownloadWithStatus == null) {
-                    ProcessingLogger.logWarning("Brochure download failed, but URL extraction was successful");
-                    return outputFilePath; // Return the URL extraction result even if download fails
-                }
-                
-                // FIXED: Continue with brochure processing after downloading
-                ProcessingLogger.logInfo("Proceeding to brochure processing stage...");
-                processBrochures(firmDataFile, filesToDownloadWithStatus, context);
-                
-                return filesToDownloadWithStatus;
-            } else {
-                context.setLastError("Failed to resume URL extraction");
-                context.setCurrentPhase(ProcessingPhase.ERROR);
-                System.err.println("Failed to resume URL extraction");
-                return null;
-            }
-            
-        } catch (Exception e) {
-            context.setLastError("Error in resume URL extraction: " + e.getMessage());
-            context.setCurrentPhase(ProcessingPhase.ERROR);
-            System.err.println("Error in resume URL extraction: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-    }
-    
-    /**
-     * Handles resume downloads functionality
-     * @param context processing context
-     * @return path to updated FilesToDownload file with download status, or null if failed/no work
-     */
-    private Path handleResumeDownloads(ProcessingContext context) {
-        try {
-            context.setCurrentPhase(ProcessingPhase.DOWNLOADING_BROCHURES);
-            ProcessingLogger.logInfo("=== RESUME DOWNLOADS MODE ===");
-            
-            com.iss.iapd.services.incremental.ResumeDownloadsService resumeService = new com.iss.iapd.services.incremental.ResumeDownloadsService();
-            
-            // Check if resume is possible
-            com.iss.iapd.services.incremental.ResumeDownloadsService.ResumeInfo resumeInfo = resumeService.checkResumeCapability();
-            if (resumeInfo == null) {
-                ProcessingLogger.logInfo("Resume downloads not possible or not needed");
-                return null;
-            }
-            
-            // Log resume statistics
-            resumeService.logResumeStats(resumeInfo);
-            
-            // Resume downloads from the determined point
-            Path outputFilePath = brochureDownloadService.downloadBrochuresFromFilesToDownloadWithResume(
-                resumeInfo.getFilesToDownloadPath(), 
-                resumeInfo.getFilesToDownloadWithDownloadsPath(), 
-                resumeInfo.getResumeIndex(), 
-                context);
-            
-            if (outputFilePath != null) {
-                ProcessingLogger.logInfo("Resume brochure download completed. Updated FilesToDownload file: " + outputFilePath);
-                return outputFilePath;
-            } else {
-                context.setLastError("Failed to resume brochure downloads");
-                context.setCurrentPhase(ProcessingPhase.ERROR);
-                System.err.println("Failed to resume brochure downloads");
-                return null;
-            }
-            
-        } catch (Exception e) {
-            context.setLastError("Error in resume downloads: " + e.getMessage());
-            context.setCurrentPhase(ProcessingPhase.ERROR);
-            System.err.println("Error in resume downloads: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-    }
-    
-    
-    /**
-     * Finds the corresponding firm data file for brochure processing
-     * This is a simplified implementation that looks for the most recent IAPD_SEC_DATA file
-     * @return path to firm data file, or null if not found
-     */
-    private Path findCorrespondingFirmDataFile() {
-        try {
-            java.io.File inputDir = new java.io.File(Config.BROCHURE_INPUT_PATH);
-            if (!inputDir.exists() || !inputDir.isDirectory()) {
-                ProcessingLogger.logWarning("Input directory does not exist: " + Config.BROCHURE_INPUT_PATH);
-                return null;
-            }
-            
-            // Look for IAPD_SEC_DATA files (these contain firm data without brochure URLs)
-            java.io.File[] files = inputDir.listFiles((dir, name) -> 
-                name.startsWith("IAPD_SEC_DATA") && name.endsWith(".csv"));
-            
-            if (files == null || files.length == 0) {
-                ProcessingLogger.logWarning("No IAPD_SEC_DATA files found for brochure processing");
-                return null;
-            }
-            
-            // Find the most recent file by modification time
-            java.io.File mostRecent = files[0];
-            for (java.io.File file : files) {
-                if (file.lastModified() > mostRecent.lastModified()) {
-                    mostRecent = file;
-                }
-            }
-            
-            ProcessingLogger.logInfo("Found firm data file for brochure processing: " + mostRecent.getName());
-            return mostRecent.toPath();
-            
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error finding corresponding firm data file", e);
-            return null;
-        }
-    }
-    
-    /**
-     * Processes monthly brochure data that has been downloaded and extracted
-     * @param monthlyDataPath path to the extracted monthly data directory
-     * @param context processing context
-     */
-    private void processMonthlyBrochures(Path monthlyDataPath, ProcessingContext context) {
-        try {
-            context.setCurrentPhase(ProcessingPhase.PROCESSING_BROCHURES);
-            ProcessingLogger.logInfo("=== MONTHLY BROCHURE PROCESSING ===");
-            ProcessingLogger.logInfo("Processing monthly brochure data from: " + monthlyDataPath);
-            ProcessingLogger.logInfo("Monthly brochure files are now available in: " + monthlyDataPath);
-            ProcessingLogger.logInfo("You can now process the brochure files from the extracted directory.");
-            
-            // For now, we'll just log the completion since the monthly data has been downloaded and extracted
-            // The user can then process the brochures from the monthly directory as needed
-            ProcessingLogger.logInfo("Monthly download and extraction completed successfully.");
-            ProcessingLogger.logInfo("Brochure files are available for processing in: " + monthlyDataPath);
-            
-        } catch (Exception e) {
-            context.setLastError("Error in monthly brochure processing: " + e.getMessage());
-            context.setCurrentPhase(ProcessingPhase.ERROR);
-            System.err.println("Error in monthly brochure processing: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
     
     private void _setUpDirectories() {   
         _checkOrMakeDirs(Config.FIRM_FILE_PATH);

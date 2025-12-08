@@ -241,10 +241,6 @@ public class ConfigurationManager {
             // Command line arguments override all other sources
             builder.indexLimit(options.getIndexLimit())
                    .verbose(options.isVerbose())
-                   .resumeDownloads(options.isResumeDownloads())
-                   .resumeProcessing(options.isResumeProcessing())
-                   .resumeURLExtraction(options.isResumeURLExtraction())
-                   .validatePdfs(options.isValidatePdfs())
                    .forceRestart(options.isForceRestart())
                    .incrementalUpdates(options.isIncrementalUpdates())
                    .incrementalDownloads(options.isIncrementalDownloads())

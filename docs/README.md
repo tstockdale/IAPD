@@ -1,392 +1,550 @@
 # IAPD - Investment Adviser Public Disclosure Parser
 
-This is a Java application that parses SEC Investment Adviser Public Disclosure (IAPD) data from XML files and processes PDF brochures to extract relevant information about investment advisory firms.
+A Java application that downloads and processes SEC Investment Adviser Public Disclosure (IAPD) data, extracting firm information from XML feeds and analyzing PDF brochures to identify proxy providers, ESG services, class action providers, and other advisory firm characteristics.
 
-## Recent Major Updates
+## Overview
 
-### 🚀 ProcessingContext Architecture (Latest)
-The application now uses a unified ProcessingContext architecture that provides:
-- **Multi-source Configuration**: Command line, config files, and database support
-- **Runtime State Tracking**: Real-time processing metrics and progress monitoring
-- **Thread-Safe Operations**: Atomic counters and volatile fields for concurrent access
-- **Extensible Design**: Easy to add new configuration options and runtime state
+The IAPD Parser automates the collection and analysis of investment adviser data from the SEC's IAPD system through a four-step processing pipeline:
 
-### 🔄 Three-Step Processing Architecture (Latest)
-Completely refactored processing flow into three distinct, independent steps:
-1. **XML Processing**: Extract firm data with brochure URLs
-2. **Brochure Downloading**: Download PDF files based on URLs from step 1
-3. **Brochure Processing**: Analyze downloaded brochures
+1. **Download & Parse XML** - Downloads latest IAPD XML data from SEC and extracts firm information
+2. **Extract Brochure URLs** - Queries SEC FIRM API to collect brochure URLs for each firm  
+3. **Download Brochures** - Downloads PDF brochure files from SEC website
+4. **Analyze Brochures** - Extracts and analyzes content to identify services, providers, and contact information
 
-### 🔄 Resume Capability (Latest)
-Intelligent resume functionality for robust processing:
-- **Individual Firm-Level Resume**: Continue from exact interruption point
-- **Automatic Failed Download Retry**: Smart retry of failed operations
-- **PDF File Validation**: Verify integrity of existing files during resume
-- **Enhanced Progress Reporting**: Clear visibility into remaining work
+## Key Features
 
-### 📈 Incremental Updates (Latest)
-Date-based incremental processing for maximum efficiency:
-- **Date-Based Intelligence**: Process only new or updated firms based on filing dates
-- **Massive Efficiency Gains**: 95-98% reduction in processing time for daily updates
-- **Flexible Processing**: Full incremental or selective step processing
-- **Cumulative Results**: Append new results to existing IAPD_Data.csv
+### Data Processing
+- **Four-Step Pipeline**: Modular processing with clear separation between XML parsing, URL extraction, downloading, and analysis
+- **Incremental Updates**: Process only new or updated firms based on filing dates (95-98% time reduction for daily updates)
+- **Force Restart**: Option to archive existing data and start fresh
+- **Rate Limiting**: Configurable rate limits for API calls and downloads
+
+### Content Analysis
+- **Proxy Provider Detection**: Glass Lewis, ISS, Broadridge, ProxyEdge, Egan-Jones, and more
+- **ESG Provider Identification**: Sustainalytics, MSCI, ISS ESG, Refinitiv, and others
+- **Class Action Detection**: Securities litigation and claims filing services
+- **Email Extraction**: Compliance, proxy voting, brochure, and other contact emails
+- **Pattern Matching**: Comprehensive regex patterns for accurate identification
+
+### Configuration & Control
+- **Command Line Interface**: Simple argument parsing with help and validation
+- **Flexible Processing**: Run complete pipeline with configurable options
+- **Configurable Limits**: Control number of firms processed for testing
+- **Rate Control**: Adjustable API and download rates
+
+### Reliability
+- **Robust Error Handling**: Graceful failure recovery with detailed logging
+- **Retry Logic**: Automatic retry for transient network failures
+- **Rate Limiting**: Respects SEC API rate limits
+- **Thread-Safe Operations**: Atomic counters for concurrent access
+
+## Technology Stack
+
+- **Java 21** - Latest LTS Java version
+- **Maven 3.x** - Dependency management and build automation
+- **Google Guice 7.0** - Dependency injection framework
+- **Apache Tika 2.9.2** - PDF text extraction
+- **Apache Commons CSV 1.11.0** - CSV file handling
+- **Jackson 2.17.2** - JSON parsing for API responses
+- **Log4j 2.23.1** - Comprehensive logging
+- **JUnit 5.11.0** - Testing framework
+
+## Quick Start
+
+### Prerequisites
+- **Java 21** or later (JDK)
+- **Maven 3.8+** for building
+- **Internet connection** for downloading SEC data
+
+### Build
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd IAPD
+
+# Build the project (creates executable JAR)
+mvn clean package
+
+# Skip tests during build (faster)
+mvn clean package -DskipTests
+```
+
+### Run
+
+```bash
+# Run with default settings (processes all firms)
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar
+
+# Run with index limit (process first 100 firms)
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --index-limit 100
+
+# Run with verbose logging
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --verbose --index-limit 50
+
+# Show help
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --help
+```
+
+### Install (Optional)
+
+```bash
+# Install to default directory (~/Work/IAPD)
+mvn -P local-install -DskipTests package
+
+# Install to custom directory  
+mvn -P local-install -Dinstall.dir=/path/to/install -DskipTests package
+
+# Run from install directory
+cd ~/Work/IAPD
+./run-iapd.bat --help          # Windows
+```
+
+## Command Line Options
+
+### Basic Options
+
+| Option | Short | Description | Example |
+|--------|-------|-------------|---------|
+| `--index-limit <n>` | `-l` | Limit number of firms to process | `--index-limit 100` |
+| `--verbose` | `-v` | Enable detailed logging | `--verbose` |
+| `--help` | `-h` | Show help message | `--help` |
+
+### Processing Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--force-restart` | Archive existing Data directory and start fresh | `--force-restart` |
+| `--incremental` | Process only new/updated firms (requires baseline) | `--incremental --baseline-file ./Data/Output/IAPD_Data.csv` |
+| `--baseline-file <path>` | Specify baseline file for incremental comparison | `--baseline-file ./Data/Output/IAPD_Data.csv` |
+
+### Rate Limiting Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--url-rate <n>` | Limit API calls per second (overrides config) | `--url-rate 2` |
+| `--download-rate <n>` | Limit downloads per second (overrides config) | `--download-rate 5` |
+
+### Usage Examples
+
+```bash
+# Basic run with limit
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --index-limit 1000
+
+# Verbose logging for testing
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -l 50 -v
+
+# Incremental update (daily processing)
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
+  --incremental \
+  --baseline-file ./Data/Output/IAPD_Data.csv \
+  --verbose
+
+# Force restart with rate limits
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
+  --force-restart \
+  --index-limit 100 \
+  --url-rate 2 \
+  --download-rate 5 \
+  --verbose
+
+# Production run with custom rates
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
+  --url-rate 3 \
+  --download-rate 10
+```
+
+## Four-Step Processing Pipeline
+
+### Step 1: Download & Parse XML
+
+**Purpose**: Download latest IAPD XML data from SEC and extract firm information
+
+**Input**: SEC IAPD XML feed (automatically downloaded)  
+**Output**: `IA_FIRM_SEC_DATA_YYYYMMDD.csv`
+
+**Process**:
+- Downloads `IA_FIRM_SEC_Feed.zip` from SEC website
+- Extracts and parses XML file
+- Extracts firm data: name, CRD, SEC number, registration date, address, etc.
+- Writes CSV with firm data (without brochure URLs yet)
+
+**Processing Phase**: `DOWNLOADING_XML` → `PARSING_XML`
+
+### Step 2: Extract Brochure URLs
+
+**Purpose**: Query SEC FIRM API to collect brochure URLs for each firm
+
+**Input**: `IA_FIRM_SEC_DATA_YYYYMMDD.csv` from Step 1  
+**Output**: `FilesToDownload_YYYYMMDD.csv`
+
+**Process**:
+- Reads firm data from Step 1
+- For each firm, queries SEC FIRM API: `https://api.adviserinfo.sec.gov/search/firm/{CRD}`
+- Extracts brochure metadata: URLs, filing dates, document IDs, versions
+- Creates FilesToDownload list with all brochure URLs
+- Applies rate limiting for API calls (configurable via `--url-rate`)
+
+**Processing Phase**: `EXTRACTING_BROCHURE_URLS`
+
+### Step 3: Download Brochures
+
+**Purpose**: Download PDF brochure files from SEC website
+
+**Input**: `FilesToDownload_YYYYMMDD.csv` from Step 2  
+**Output**: `FilesToDownload_YYYYMMDD_with_status.csv` + PDF files in `Data/Downloads/`
+
+**Process**:
+- Reads URLs from FilesToDownload
+- Downloads each PDF brochure from SEC
+- Validates downloaded files (file size, PDF signature)
+- Updates status column (SUCCESS/FAILED)
+- Implements retry logic for transient failures
+- Applies rate limiting for downloads (configurable via `--download-rate`)
+
+**Processing Phase**: `DOWNLOADING_BROCHURES`
+
+### Step 4: Analyze Brochures
+
+**Purpose**: Extract and analyze content from downloaded brochures
+
+**Input**: 
+- `IA_FIRM_SEC_DATA_YYYYMMDD.csv` (firm data)
+- `FilesToDownload_YYYYMMDD_with_status.csv` (download status)
+- Downloaded PDF files
+
+**Output**: `IAPD_Data.csv` (comprehensive firm data with analysis)
+
+**Process**:
+- Extracts text from PDF brochures using Apache Tika
+- Analyzes content using pattern matching:
+  - **Proxy Providers**: Glass Lewis, ISS, Broadridge, ProxyEdge, Egan-Jones, etc.
+  - **ESG Providers**: Sustainalytics, MSCI, ISS ESG, Refinitiv, etc.
+  - **Class Action**: Securities litigation and claims filing services
+  - **Emails**: Compliance, proxy voting, brochure contacts (Item 17), all emails
+  - **No-Vote Language**: Abstention policy detection
+- Merges analysis results with firm data
+- Generates final comprehensive CSV output
+
+**Processing Phase**: `PROCESSING_BROCHURES` → `GENERATING_OUTPUT`
+
+## Output Files
+
+### Primary Output Files
+
+| File | Description | Location |
+|------|-------------|----------|
+| `IAPD_Data.csv` | **Final comprehensive data with analysis** | `Data/Output/` |
+| `IA_FIRM_SEC_DATA_YYYYMMDD.csv` | Firm data from XML (Step 1) | `Data/Output/` |
+| `FilesToDownload_YYYYMMDD.csv` | Brochure URLs to download (Step 2) | `Data/Output/` |
+| `FilesToDownload_YYYYMMDD_with_status.csv` | Download status tracking (Step 3) | `Data/Output/` |
+
+### IAPD_Data.csv Structure
+
+The final output file contains 35 columns:
+
+**Firm Information** (from XML):
+- dateAdded, SECRgmCD, FirmCrdNb, SECMb
+- Business Name, Legal Name
+- Street 1, Street 2, City, State, Country, Postal Code
+- Telephone #, Fax #
+- Registration Firm Type, Registration State, Registration Date
+- Filing Date, Filing Version
+- Total Employees, AUM, Total Accounts
+- BrochureURL
+
+**Brochure Metadata** (from API):
+- brochureVersionId, brochureName
+- dateSubmitted, dateConfirmed
+- File Name
+
+**Analysis Results** (from PDF analysis):
+- Proxy Provider
+- Class Action Provider
+- ESG Provider
+- ESG Investment Language
+- Email -- Compliance
+- Email -- Proxy
+- Email -- Brochure
+- Email -- Item 17
+- Email -- All
+- Does Not Vote String
+
+## Incremental Processing
+
+### Overview
+
+Incremental processing allows you to process only new or updated firms since a previous run, dramatically reducing processing time for daily updates (95-98% reduction).
+
+### How It Works
+
+1. Compares current XML data with baseline `IAPD_Data.csv`
+2. Identifies firms that are new or have updated filing dates
+3. Processes only those firms
+4. Appends results to existing `IAPD_Data.csv`
+
+### Usage
+
+```bash
+# Enable incremental processing
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
+  --incremental \
+  --baseline-file ./Data/Output/IAPD_Data.csv
+```
+
+### Requirements
+
+- Baseline file must exist (previous `IAPD_Data.csv`)
+- Baseline file must contain `Filing Date` column
+- Firms are compared by CRD number and filing date
+
+### Benefits
+
+- **Time Savings**: Process only 2-5% of firms on daily updates
+- **Resource Efficiency**: Reduced API calls and downloads
+- **Data Continuity**: Appends to existing data without duplication
+- **Automation Ready**: Perfect for scheduled daily/weekly runs
+
+## Testing
+
+The project includes comprehensive test coverage:
+
+```bash
+# Run all tests
+mvn test
+
+# Run specific test class
+mvn test -Dtest=PatternMatchersTest
+
+# Run with verbose output
+mvn test -X
+
+# Skip tests during build
+mvn package -DskipTests
+```
+
+**Test Coverage**:
+- Unit tests for all services and utilities
+- Integration tests for complete workflows  
+- Pattern matching validation (150+ tests)
+- Configuration and CLI argument tests
+- Incremental processing tests
+
+For complete testing documentation, see **[TESTING_GUIDE.md](TESTING_GUIDE.md)**.
+
+## Configuration
+
+### Directory Structure
+
+The application automatically creates these directories:
+
+```
+Data/
+├── Input/          # Reserved for input files
+├── Output/         # CSV output files
+├── Downloads/      # Downloaded PDF brochures
+├── FirmFiles/      # Extracted XML files
+└── Logs/           # Application log files
+```
+
+### Rate Limiting
+
+Control API and download rates to respect SEC limits:
+
+```bash
+# Via command line
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
+  --url-rate 10 \
+  --download-rate 10
+
+# Via properties file (future)
+rate.limit.url.per.second=2
+rate.limit.download.per.second=5
+```
+
+### Logging
+
+Logs are written to `Logs/iapd-YYYYMMDD.log` with:
+- INFO level: Progress and completion messages
+- WARN level: Non-fatal issues
+- ERROR level: Failures and exceptions
+- Verbose mode: Additional debug information
 
 ## Project Structure
 
 ```
 IAPD/
-├── src/                                    # Java source files
-│   ├── IAFirmSECParserRefactored.java     # Main application class (recommended)
-│   ├── ProcessingContext.java             # Unified context with config & runtime state
-│   ├── ProcessingPhase.java               # Processing phase enumeration
-│   ├── ConfigurationManager.java          # Multi-source configuration management
-│   ├── CommandLineOptions.java            # Command line argument parsing
-│   ├── ResumeStateManager.java            # Resume state management and validation
-│   ├── IncrementalUpdateManager.java      # Incremental update logic and date comparison
-│   ├── BrochureDownloadService.java       # Dedicated brochure downloading service
-│   ├── XMLProcessingService.java          # XML parsing and firm data extraction
-│   ├── BrochureProcessingService.java     # Brochure analysis and processing
-│   ├── FileDownloadService.java           # File download operations
-│   ├── CSVWriterService.java              # CSV output operations
-│   ├── BrochureAnalyzer.java              # Brochure content analysis
-│   ├── ProcessingLogger.java              # Logging utilities
-│   ├── Config.java                        # Configuration constants
-│   ├── PatternMatchers.java               # Regex patterns for analysis
-│   ├── HttpUtils.java                     # HTTP operations
-│   ├── PdfTextExtractor.java              # PDF text extraction
-│   ├── RetryUtils.java                    # Retry logic utilities
-│   ├── FirmData.java                      # Firm data model
-│   ├── FirmDataBuilder.java               # Builder for FirmData
-│   ├── BrochureAnalysis.java              # Analysis results model
-│   ├── *Exception.java                    # Custom exception classes
-│   └── test/                              # Test classes and resources
-├── bin/                                   # Compiled class files
-├── lib/                                   # External JAR dependencies
-├── Data/                                  # Data directories
-│   ├── Input/                            # Input files
-│   ├── Output/                           # Output files
-│   ├── Downloads/                        # Downloaded brochures
-│   ├── FirmFiles/                        # XML firm files
-│   └── Logs/                             # Log files
-├── Documentation/
-│   ├── PROCESSING_CONTEXT_ARCHITECTURE.md
-│   ├── THREE_STEP_PROCESSING_ARCHITECTURE.md
-│   ├── RESUME_CAPABILITY_IMPLEMENTATION.md
-│   ├── INCREMENTAL_UPDATES_IMPLEMENTATION.md
-│   ├── COMMAND_LINE_IMPLEMENTATION.md
-│   └── REFACTORING_SUMMARY.md
-├── IAPD.code-workspace                   # VSCode workspace file
-└── README.md                             # This file
+├── src/main/java/com/iss/iapd/
+│   ├── core/
+│   │   ├── IAFirmSECParserRefactored.java    # Main application entry point
+│   │   └── ProcessingContext.java            # Central configuration & state
+│   ├── config/
+│   │   ├── CommandLineOptions.java           # CLI argument parsing
+│   │   ├── ConfigurationManager.java         # Multi-source configuration
+│   │   ├── ProcessingLogger.java             # Logging utilities
+│   │   ├── Config.java                       # Configuration constants
+│   │   └── IapdModule.java                   # Guice DI configuration
+│   ├── services/
+│   │   ├── xml/XMLProcessingService.java     # XML parsing & firm extraction
+│   │   ├── brochure/
+│   │   │   ├── BrochureURLExtractionService.java  # URL extraction from API
+│   │   │   ├── BrochureDownloadService.java       # Bulk PDF downloading
+│   │   │   ├── BrochureProcessingService.java     # PDF analysis pipeline
+│   │   │   ├── BrochureAnalyzer.java             # Content analysis
+│   │   │   └── BrochureProcessingStatistics.java # Analysis metrics
+│   │   ├── download/FileDownloadService.java # Core download operations
+│   │   ├── csv/                              # CSV services
+│   │   └── incremental/                      # Incremental processing
+│   ├── model/                                # Data models
+│   ├── utils/                                # Utility classes
+│   └── exceptions/                           # Custom exceptions
+├── src/test/java/                            # 500+ test methods
+├── docs/                                     # Documentation
+├── scripts/                                  # Build & test scripts
+├── Data/                                     # Runtime data directories
+└── pom.xml                                   # Maven configuration
 ```
 
-## Dependencies
+## Architecture
 
-Dependencies are managed by Maven. Key libraries include:
-- Apache Commons CSV (1.10.0)
-- Apache Tika 2.x (core + standard parsers package)
-- Log4j 2 (API, Core, and SLF4J binding)
+### Design Patterns
 
-No manual JAR downloads are required; Maven resolves them automatically.
+**Dependency Injection** (Google Guice):
+- Loose coupling between components
+- Easy testing with mocked dependencies
+- Centralized configuration
 
-## Installation
+**Service Layer Pattern**:
+- Clear separation of concerns
+- Each service handles one aspect of processing
+- Easy to test and maintain
 
-To install the shaded JAR and helper script to C:\\Users\\stoctom\\Work\\IAPD:
+**Builder Pattern**:
+- Flexible object construction (FirmData, ProcessingContext)
+- Fluent API for readable code
 
-1. Build and install:
-	- From VS Code: Run the "install" task
-	- Or via terminal:
-	```powershell
-	mvn -P local-install -DskipTests package
-	```
-2. Run from install folder:
-	```powershell
-	cd C:\Users\stoctom\Work\IAPD
-	.\run-iapd.bat --help
-	```
-
-Artifacts created:
-- iapd.jar (shaded)
-- run-iapd.bat
-- Data/ folder structure (Downloads, Output, Input, FirmFiles, Logs)
-
-## Features
-
-### Core Functionality
-- Parse SEC IAPD XML feed files with configurable limits
-- Extract firm information and registration details
-- Download PDF brochures from SEC website with retry logic
-- Analyze brochures for proxy providers, ESG services, class action providers
-- Extract email addresses and contact information
-- Generate comprehensive CSV reports with analysis results
-
-### Advanced Features
-- **Command Line Interface**: Full argument parsing with help and validation
-- **Multi-Source Configuration**: Command line, properties files, database support
-- **Real-Time Monitoring**: Processing rates, progress tracking, error reporting
-- **Three-Step Processing**: Independent XML parsing, downloading, and analysis
-- **Robust Error Handling**: Graceful failure recovery and detailed error reporting
-- **Flexible Execution**: Can run steps independently or skip steps entirely
-
-## Command Line Usage
-
-### Basic Usage
-```bash
-# Build a runnable fat JAR
-mvn -DskipTests package
-
-# Run with default settings (no limit)
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar
-
-# Set index limit for processing
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --index-limit 1000
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -l 500
-
-# Enable verbose logging
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --verbose
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -v
-
-# Combine options
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --index-limit 100 --verbose
-
-# Show help
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar --help
-java -jar target/iapd-1.0.0-SNAPSHOT-all.jar -h
-```
-
-### Resume Capability Usage
-```bash
-# Enable resume for both downloads and processing
-java IAFirmSECParserRefactored --resume --index-limit 1000
-java IAFirmSECParserRefactored -r
-
-# Resume only brochure downloads
-java IAFirmSECParserRefactored --resume-downloads --validate-pdfs
-
-# Resume only brochure processing
-java IAFirmSECParserRefactored --resume-processing
-
-# Skip PDF validation during resume (faster)
-java IAFirmSECParserRefactored --resume --no-validate-pdfs
-
-# Force restart ignoring existing files
-java IAFirmSECParserRefactored --force-restart
-
-# Combine resume with other options
-java IAFirmSECParserRefactored --resume --verbose --index-limit 500
-```
-
-### Incremental Updates Usage
-```bash
-# Enable incremental updates for both downloads and processing
-java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Output/IAPD_Data.csv
-java IAFirmSECParserRefactored -i --baseline-file ./Data/Output/IAPD_Data.csv
-
-# Incremental downloads only (skip processing)
-java IAFirmSECParserRefactored --incremental-downloads --baseline-file ./Data/Output/IAPD_Data.csv
-
-# Incremental processing only (skip downloads)
-java IAFirmSECParserRefactored --incremental-processing --baseline-file ./Data/Output/IAPD_Data.csv
-
-# Use custom baseline file for comparison
-java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Archive/IAPD_Data_20240101.csv
-
-# Combine incremental with other options
-java IAFirmSECParserRefactored --incremental --baseline-file ./Data/Output/IAPD_Data.csv --verbose --index-limit 1000
-```
-
-### Configuration File Support
-Create `iapd.properties` in the project directory:
-```properties
-# IAPD Parser Configuration
-index.limit=1000
-verbose=true
-output.format=CSV
-retry.count=3
-skip.brochure.download=false
-# Rate limits (operations per second)
-rate.limit.xml.per.second=1
-rate.limit.download.per.second=1
-```
-
-## Three-Step Processing Flow
-
-### Step 1: XML Processing
-- **Input**: XML file from SEC
-- **Output**: `IA_FIRM_SEC_DATA_YYYYMMDD.csv` (firm data + brochure URLs)
-- **Purpose**: Extract firm information and brochure URLs without downloading
-
-### Step 2: Brochure Downloading
-- **Input**: CSV file from Step 1
-- **Output**: `IA_FIRM_SEC_DATA_YYYYMMDD_with_downloads.csv` + PDF files
-- **Purpose**: Download brochure PDFs and track download status
-
-### Step 3: Brochure Processing
-- **Input**: CSV file from Step 2 + downloaded PDFs
-- **Output**: `IAPD_Found.csv` (analysis results)
-- **Purpose**: Analyze downloaded brochures and extract information
-
-## Architecture Overview
-
-### ProcessingContext Architecture
-The application uses a unified context pattern that provides:
-
-#### Configuration Management
-- **Command Line Arguments**: Highest priority configuration source
-- **Properties Files**: Secondary configuration source
-- **Database Configuration**: Placeholder for future database-driven config
-- **Default Values**: Fallback configuration
-
-#### Runtime State Tracking
-- **Processing Metrics**: Firms processed, downloads, analysis results
-- **Phase Tracking**: Current processing phase with descriptions
-- **Performance Monitoring**: Processing rates, elapsed time, error counts
-- **Thread-Safe Operations**: Atomic counters for concurrent access
-
-### Service Layer Architecture
-- **XMLProcessingService**: XML parsing and firm data extraction
-- **BrochureDownloadService**: Bulk brochure downloading with status tracking
-- **BrochureProcessingService**: PDF analysis and information extraction
-- **FileDownloadService**: Core download operations with retry logic
-- **ConfigurationManager**: Multi-source configuration management
-
-### Key Design Patterns
-- **Builder Pattern**: Flexible object construction (ProcessingContext, FirmData)
-- **Strategy Pattern**: Extensible analysis framework
-- **Service Layer Pattern**: Clear separation of business logic
-- **Dependency Injection**: Loose coupling between components
-- **Command Pattern**: Command line argument processing
-
-## Benefits of Current Architecture
-
-### 1. **Separation of Concerns**
-- Each processing step has a single responsibility
-- Clear data flow between steps
-- Independent error handling per step
-
-### 2. **Flexibility and Control**
-- Can run individual steps for debugging
-- Skip steps if data already exists
-- Configure processing limits and behavior
-
-### 3. **Robust Error Handling**
-- Download failures don't stop XML processing
-- Graceful continuation with partial failures
-- Detailed error reporting and logging
-
-### 4. **Real-Time Monitoring**
-- Processing rates and progress tracking
-- Phase-based status updates
-- Comprehensive logging with configurable verbosity
-
-### 5. **Extensibility**
-- Easy to add new configuration options
-- Simple to extend with new processing steps
+**Strategy Pattern**:
 - Pluggable analysis strategies
+- Easy to add new detection patterns
 
-## Testing
+### Key Components
 
-The project includes comprehensive test classes:
-- **ProcessingContextTest**: Tests the ProcessingContext architecture
-- **ThreeStepProcessingTest**: Demonstrates the three-step processing flow
-- **CommandLineTest**: Tests command line argument parsing
-- **Unit Tests**: Individual service and component tests
+**Core**:
+- `IAFirmSECParserRefactored` - Main application controller orchestrating four-step pipeline
+- `ProcessingContext` - Central configuration and runtime state tracking
+- `ProcessingPhase` - Enumeration of processing stages
 
-## VSCode Setup
+**Services**:
+- `XMLProcessingService` - Parses XML and extracts firm data
+- `BrochureURLExtractionService` - Queries SEC API for brochure URLs
+- `BrochureDownloadService` - Downloads PDF files with retry logic
+- `BrochureProcessingService` - Analyzes PDF content and merges data
+- `FileDownloadService` - Core HTTP download operations
 
-### Required Extensions
-- Extension Pack for Java (vscjava.vscode-java-pack)
-- Language Support for Java (redhat.java)
-- Debugger for Java (vscjava.vscode-java-debug)
+**Utilities**:
+- `PatternMatchers` - Regex patterns for content analysis
+- `HttpUtils` - HTTP operations with retry logic
+- `RetryUtils` - Configurable retry mechanisms
+- `RateLimiter` - API and download rate limiting
 
-### Launch Configurations
-- **Launch IAFirmSECParserRefactored**: Run the main application
-- **Debug with Arguments**: Run with custom command line arguments
-- **Test Runner**: Execute test classes
+## Performance
 
-### Build Tasks
-- **compile**: Compile all Java source files
-- **run**: Compile and run the application
-- **test**: Run test suite
-- **clean**: Remove compiled class files
+### Typical Processing Times
 
-## Performance Considerations
+| Mode | Firms | Time | Notes |
+|------|-------|------|-------|
+| Full Run | 15,000 | 8-12 hours | Complete pipeline all firms |
+| Incremental | 300 | 20-40 minutes | Daily updates (~2% of firms) |
+| Test Run | 100 | 5-10 minutes | With `--index-limit 100` |
 
-- **Memory**: Configured for large datasets (2GB+ heap space)
-- **Rate Limiting**: Built-in delays for API calls to respect SEC limits
-- **Thread Safety**: All runtime state updates use atomic operations
-- **Resource Management**: Proper cleanup with try-with-resources
-- **Batch Processing**: Efficient handling of large firm datasets
+### Optimization Features
 
-## Error Handling Strategy
+- **Incremental Processing**: 95-98% time reduction for updates
+- **Rate Limiting**: Prevents API throttling
+- **Efficient Parsing**: Apache Tika with optimized extraction
+- **Retry Logic**: Automatic recovery from transient failures
 
-### Step 1 (XML Processing)
-- Individual firm errors logged but processing continues
-- Critical XML errors stop the process
-- Output contains all successfully processed firms
+### Resource Requirements
 
-### Step 2 (Brochure Downloading)
-- Download failures recorded in status column
-- Processing continues with remaining downloads
-- Retry logic for transient failures
-
-### Step 3 (Brochure Processing)
-- Analysis errors logged per brochure
-- Processing continues with remaining files
-- Only successful analyses in final output
-
-## Future Enhancements
-
-### Planned Features
-- **Parallel Processing**: Multi-threaded downloading and analysis
-- **Distributed Processing**: Scale across multiple machines
-- **Web Interface**: Browser-based monitoring and control
-- **Advanced Incremental Features**: Time-based incremental processing, selective field updates
-- **Enhanced Resume Features**: Time-based resume, selective validation, incremental resume
-
-### Configuration Extensions
-- **Database Configuration**: Store settings in database
-- **Environment Variables**: Support for containerized deployments
-- **Profile-Based Config**: Different settings for dev/test/prod
-
-## Migration Notes
-
-### From Legacy Architecture
-- **Breaking Changes**: Method signatures updated to use ProcessingContext
-- **New Files**: Additional CSV files with download status
-- **Enhanced Logging**: More detailed progress and error reporting
-- **Configuration**: New command line options and config file support
-
-### Backward Compatibility
-- Legacy classes maintained for reference
-- Core functionality preserved
-- Output formats remain consistent
+- **Memory**: 2-4 GB heap recommended
+- **Disk**: ~10-20 GB for brochure PDFs
+- **Network**: Stable internet connection
+- **CPU**: Single-threaded (future: parallel processing)
 
 ## Troubleshooting
 
 ### Common Issues
-1. **Missing Dependencies**: Ensure all JAR files are in the lib/ directory
-2. **Memory Issues**: Increase JVM heap size for large datasets
-3. **Network Errors**: Check internet connection and SEC website availability
-4. **File Permissions**: Ensure write access to Data/ directories
+
+**OutOfMemoryError**:
+```bash
+# Increase heap size
+java -Xmx4g -jar target/iapd-1.0.0-SNAPSHOT-all.jar
+```
+
+**Network Timeouts**:
+- Check internet connection
+- Verify SEC website availability
+- Reduce rate limits: `--url-rate 1 --download-rate 2`
+
+**PDF Extraction Errors**:
+- Some PDFs may be corrupted or password-protected
+- Processing continues with remaining files
+- Check logs for specific errors
+
+**Build Issues**:
+```bash
+# Clean rebuild
+mvn clean install -U
+
+# Force update dependencies
+mvn clean install -U -DskipTests
+```
 
 ### Debug Mode
+
 ```bash
-# Run with verbose logging and debug information
-java IAFirmSECParserRefactored --verbose --index-limit 10
+# Enable verbose logging and limit processing
+java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
+  --verbose \
+  --index-limit 10 \
+  2>&1 | tee debug.log
 ```
 
 ### Log Files
-Check the `Data/Logs/` directory for detailed processing logs and error information.
 
-## Contributing
+Check `Logs/iapd-YYYYMMDD.log` for:
+- Detailed processing information
+- Error messages with stack traces
+- Progress tracking and timing
+- API call details (in verbose mode)
 
-When contributing to this project:
-1. Follow the established architecture patterns
-2. Add appropriate unit tests for new functionality
-3. Update documentation for any API changes
-4. Use the ProcessingContext for all new configuration options
-5. Maintain the three-step processing separation
+## Documentation
+
+### Quick Links
+- **[Quick Start Guide](QUICK_START.md)** - Get up and running quickly
+- **[Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing documentation
+- **[Deployment Guide](JAR_DEPLOYMENT_GUIDE.md)** - Production deployment
+
+### Architecture Documentation
+- **[ProcessingContext Architecture](PROCESSING_CONTEXT_ARCHITECTURE.md)** - Core patterns
+- **[Command Line Implementation](COMMAND_LINE_IMPLEMENTATION.md)** - CLI details
+- **[Incremental Processing](INCREMENTAL_PROCESSING.md)** - Incremental updates
+
+### Feature Documentation
+- **[Brochure Processing Statistics](BROCHURE_PROCESSING_STATISTICS_IMPLEMENTATION.md)**
+- **[Brochure URL Extraction](BROCHURE_URL_EXTRACTION_SERVICE.md)**
+- **[HTTP Utils Enhancement](HTTP_UTILS_ENHANCEMENT_SUMMARY.md)**
+
+### Configuration & Setup
+- **[Logging Setup](LOGGING_SETUP.md)** - Log4j2 configuration
+- **[Tika Upgrade Notes](TIKA_UPGRADE_NOTES.md)** - Apache Tika information
 
 ## License
 
 This project is for internal use and analysis of SEC IAPD data.
+
+---
+
+**Version**: 1.0.0-SNAPSHOT  
+**Java Version**: 21  
+**Last Updated**: December 8, 2025
