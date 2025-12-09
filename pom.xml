@@ -213,7 +213,7 @@
                     <mkdir dir="${install.dir}/Data/Output" />
                     <mkdir dir="${install.dir}/Data/Input" />
                     <mkdir dir="${install.dir}/Data/FirmFiles" />
-                    <mkdir dir="${install.dir}/Data/Logs" />
+                    <mkdir dir="${install.dir}/Logs" />
 
                     <!-- Copy shaded jar and name it iapd.jar for convenience -->
                     <copy file="${project.build.directory}/${project.artifactId}-${project.version}-all.jar"
