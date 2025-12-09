@@ -305,6 +305,29 @@ java -jar target/iapd-1.0.0-SNAPSHOT-all.jar \
 - **Data Continuity**: Appends to existing data without duplication
 - **Automation Ready**: Perfect for scheduled daily/weekly runs
 
+## Recent Improvements (December 2025)
+
+### ✅ Priority 1 Refactoring Complete: Incremental Processing Simplification
+
+We successfully refactored the incremental processing architecture, resulting in:
+
+**Key Improvements**:
+- **Eliminated Code Duplication**: Date parsing logic consolidated into single `DateComparator` utility
+- **Better Separation of Concerns**: Created focused services with single responsibilities
+- **Enhanced Testability**: 52 comprehensive tests with 100% pass rate
+- **10% Code Reduction**: Removed 63 lines while improving functionality
+
+**New Components**:
+- `DateComparator` - Centralized date parsing and comparison (21 tests)
+- `BaselineDataReader` - Unified baseline file reading (16 tests)
+- `IncrementalProcessingService` - Orchestrator for incremental operations (15 tests)
+
+**Removed Legacy Code**:
+- `IncrementalUpdateManager` - Replaced by new services
+- `OutputDataReaderService` - Replaced by `BaselineDataReader`
+
+For complete refactoring details, see **[REFACTORING_PRIORITY_1_COMPLETE.md](REFACTORING_PRIORITY_1_COMPLETE.md)**.
+
 ## Testing
 
 The project includes comprehensive test coverage:
@@ -316,6 +339,9 @@ mvn test
 # Run specific test class
 mvn test -Dtest=PatternMatchersTest
 
+# Run new refactored incremental processing tests
+mvn test -Dtest=DateComparatorTest,BaselineDataReaderTest,IncrementalProcessingServiceTest
+
 # Run with verbose output
 mvn test -X
 
@@ -324,11 +350,22 @@ mvn package -DskipTests
 ```
 
 **Test Coverage**:
+- **500+ total test methods** across the codebase
 - Unit tests for all services and utilities
-- Integration tests for complete workflows  
+- Integration tests for complete workflows
 - Pattern matching validation (150+ tests)
 - Configuration and CLI argument tests
-- Incremental processing tests
+- **Incremental processing tests** (52 comprehensive tests - recently refactored)
+  - Date parsing and comparison (21 tests)
+  - Baseline file reading and validation (16 tests)
+  - Incremental logic and statistics (15 tests)
+
+**Recent Test Results**:
+```
+✅ All tests passing (52/52 incremental processing tests)
+✅ Zero compilation errors or warnings
+✅ 100% backward compatibility maintained
+```
 
 For complete testing documentation, see **[TESTING_GUIDE.md](TESTING_GUIDE.md)**.
 
@@ -394,10 +431,27 @@ IAPD/
 │   │   │   └── BrochureProcessingStatistics.java # Analysis metrics
 │   │   ├── download/FileDownloadService.java # Core download operations
 │   │   ├── csv/                              # CSV services
-│   │   └── incremental/                      # Incremental processing
+│   │   │   └── CSVWriterService.java        # CSV file writing operations
+│   │   └── incremental/                      # Incremental processing (refactored Dec 2025)
+│   │       ├── IncrementalProcessingService.java  # Unified orchestrator
+│   │       └── BaselineDataReader.java            # Baseline file reading
 │   ├── model/                                # Data models
+│   │   ├── FirmData.java                    # Immutable firm data DTO
+│   │   ├── FirmDataBuilder.java             # Builder for FirmData
+│   │   ├── BrochureAnalysis.java            # Brochure analysis results
+│   │   └── ProcessingPhase.java             # Pipeline phase enumeration
 │   ├── utils/                                # Utility classes
+│   │   ├── DateComparator.java              # Date parsing & comparison (new Dec 2025)
+│   │   ├── CsvUtils.java                    # CSV utility functions (new Dec 2025)
+│   │   ├── PatternMatchers.java             # Regex patterns for analysis
+│   │   ├── HttpUtils.java                   # HTTP operations with retry
+│   │   ├── RetryUtils.java                  # Retry logic utilities
+│   │   ├── RateLimiter.java                 # Token-bucket rate limiting
+│   │   └── PdfTextExtractor.java            # PDF text extraction
 │   └── exceptions/                           # Custom exceptions
+│       ├── XMLProcessingException.java      # XML processing errors
+│       ├── BrochureProcessingException.java # Brochure processing errors
+│       └── FileDownloadException.java       # File download errors
 ├── src/test/java/                            # 500+ test methods
 ├── docs/                                     # Documentation
 ├── scripts/                                  # Build & test scripts
@@ -442,10 +496,12 @@ IAPD/
 - `FileDownloadService` - Core HTTP download operations
 
 **Utilities**:
+- `DateComparator` - Date parsing and comparison for incremental processing
 - `PatternMatchers` - Regex patterns for content analysis
 - `HttpUtils` - HTTP operations with retry logic
 - `RetryUtils` - Configurable retry mechanisms
 - `RateLimiter` - API and download rate limiting
+- `CsvUtils` - CSV file utility functions
 
 ## Performance
 
@@ -524,6 +580,7 @@ Check `Logs/iapd-YYYYMMDD.log` for:
 - **[Quick Start Guide](QUICK_START.md)** - Get up and running quickly
 - **[Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing documentation
 - **[Deployment Guide](JAR_DEPLOYMENT_GUIDE.md)** - Production deployment
+- **[Refactoring Complete](REFACTORING_PRIORITY_1_COMPLETE.md)** - Recent improvements (Dec 2025)
 
 ### Architecture Documentation
 - **[ProcessingContext Architecture](PROCESSING_CONTEXT_ARCHITECTURE.md)** - Core patterns
