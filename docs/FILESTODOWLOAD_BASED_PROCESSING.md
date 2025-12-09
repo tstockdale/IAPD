@@ -8,7 +8,7 @@ The `processBrochuresWithMerge` method has been updated to use the `filesToDownl
 
 ### Input Data Source
 - **Primary Source**: `filesToDownloadWithStatus` CSV file
-- **Format**: `FilesToDownload_YYYYMMDD_with_downloads.csv`
+- **Format**: `FilesToDownload_YYYYMMDD_with_status.csv`
 - **Fields**: `firmId,firmName,brochureVersionId,brochureName,dateSubmitted,dateConfirmed,downloadStatus,fileName`
 
 ### Processing Logic

@@ -25,7 +25,7 @@ import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.exceptions.XMLProcessingException;
 import com.iss.iapd.model.FirmData;
 import com.iss.iapd.model.FirmDataBuilder;
-import com.iss.iapd.services.incremental.IncrementalUpdateManager;
+import com.iss.iapd.services.incremental.IncrementalProcessingService;
 
 /**
  * Service class responsible for XML processing operations
@@ -96,37 +96,37 @@ public class XMLProcessingService {
      * Processes XML file in incremental mode (only new/updated firms)
      */
     private Path processXMLFileIncremental(File xmlFile, ProcessingContext context) throws XMLProcessingException {
-        IncrementalUpdateManager incrementalManager = new IncrementalUpdateManager();
+        IncrementalProcessingService incrementalService = new IncrementalProcessingService();
         Path baselineFile = Paths.get(context.getBaselineFilePath());
-        
+
         // Validate baseline file structure
-        if (!incrementalManager.validateBaselineFileStructure(baselineFile)) {
+        if (!incrementalService.validateBaselineFileStructure(baselineFile)) {
             ProcessingLogger.logWarning("Baseline file structure invalid or missing. Falling back to standard processing.");
             return processXMLFileStandard(xmlFile, context);
         }
-        
+
         try {
         	ProcessingLogger.logInfo("Incremental XML processing started.");
             // First pass: collect all firm data from XML
             List<FirmData> allFirms = collectAllFirmData(xmlFile, context);
-            
-            // Load historical filing dates
-            Map<String, String> historicalDates = incrementalManager.getHistoricalFilingDates(baselineFile);
-            
+
+            // Read baseline data
+            Map<String, String> historicalDates = incrementalService.readBaselineData(baselineFile).getFilingDates();
+
             // Calculate incremental statistics
-            IncrementalUpdateManager.IncrementalStats stats = 
-                    incrementalManager.calculateIncrementalStats(allFirms, historicalDates);
-            
+            IncrementalProcessingService.IncrementalStats stats =
+                    incrementalService.calculateIncrementalStats(allFirms, historicalDates);
+
             // Log incremental statistics
-            incrementalManager.logIncrementalStats(stats, baselineFile);
-            
+            incrementalService.logIncrementalStats(stats, baselineFile);
+
             // Filter firms for processing
-            List<FirmData> firmsToProcess = incrementalManager.filterFirmsForProcessing(allFirms, historicalDates);
-            
+            List<FirmData> firmsToProcess = incrementalService.filterFirmsForProcessing(allFirms, historicalDates);
+
             // Generate incremental output file name
             String baseFileName = extractBaseFileName(xmlFile.getName());
             String dateString = extractDateString(xmlFile.getName());
-            String incrementalFileName = incrementalManager.generateIncrementalFileName(baseFileName, dateString, ".csv");
+            String incrementalFileName = incrementalService.generateIncrementalFileName(baseFileName, dateString, ".csv");
             Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, incrementalFileName);
             
             // Write filtered firms to output file using Commons CSV

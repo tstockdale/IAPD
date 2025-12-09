@@ -22,7 +22,6 @@ import com.iss.iapd.config.Config;
 import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.exceptions.BrochureProcessingException;
-import com.iss.iapd.services.incremental.ResumeURLExtractionService;
 import com.iss.iapd.utils.HttpUtils;
 import com.iss.iapd.utils.RateLimiter;
 import com.iss.iapd.utils.RetryUtils;
@@ -50,151 +49,10 @@ public class BrochureURLExtractionService {
      * @throws BrochureProcessingException if processing fails
      */
     public Path processFirmDataForBrochures(File inputCsvFile, ProcessingContext context) throws BrochureProcessingException {
-        // Check if resume mode is enabled
-        if (context.isResumeURLExtraction()) {
-            return processFirmDataForBrochuresWithResume(inputCsvFile, context);
-        } else {
-            return processFirmDataForBrochuresNormal(inputCsvFile, context);
-        }
+        return processFirmDataForBrochuresNormal(inputCsvFile, context);       
     }
     
-    /**
-     * Processes firm data with resume functionality - appends to existing FilesToDownload file
-     * 
-     * @param inputCsvFile the CSV file containing firm data from parseXML
-     * @param context processing context containing configuration and runtime state
-     * @return the Path of the FilesToDownload output file
-     * @throws BrochureProcessingException if processing fails
-     */
-    private Path processFirmDataForBrochuresWithResume(File inputCsvFile, ProcessingContext context) throws BrochureProcessingException {
-        ProcessingLogger.logInfo("Starting brochure URL extraction with RESUME mode for file: " + inputCsvFile.getName());
-        
-        // Use ResumeURLExtractionService to check resume capability and get resume info
-        ResumeURLExtractionService resumeService = new ResumeURLExtractionService();
-        ResumeURLExtractionService.ResumeInfo resumeInfo;
-        
-        try {
-            resumeInfo = resumeService.checkResumeCapability();
-            if (resumeInfo == null) {
-                throw new BrochureProcessingException("Resume capability check failed: No resume information available");
-            }
-            ProcessingLogger.logInfo("Resume capability check completed successfully");
-        } catch (Exception e) {
-            ProcessingLogger.logError("Resume capability check failed", e);
-            throw new BrochureProcessingException("Resume capability check failed: " + e.getMessage(), e);
-        }
-        
-        // Initialize processing statistics
-        ProcessingStats stats = new ProcessingStats();
-        long startTime = System.currentTimeMillis();
-        
-        // Use the existing FilesToDownload file for append mode
-        Path outputFilePath = resumeInfo.getFilesToDownloadPath();
-        
-        ProcessingLogger.logInfo("Resuming from firm index: " + resumeInfo.getResumeIndex() + 
-                               " (firmId: " + resumeInfo.getLastCompleteFirmId() + ")");
-        ProcessingLogger.logInfo("Appending to existing file: " + outputFilePath);
-        
-        // Initialize CSV writer for streaming output in APPEND mode
-        try (FileInputStream fis = new FileInputStream(inputCsvFile);
-             CSVParser parser = CSVFormat.EXCEL
-                     .builder()
-                     .setHeader()
-                     .setSkipHeaderRecord(true)
-                     .build()
-                     .parse(new java.io.InputStreamReader(fis, StandardCharsets.UTF_8));
-             OutputStreamWriter osw = new OutputStreamWriter(
-                     new FileOutputStream(outputFilePath.toFile(), true), StandardCharsets.UTF_8); // APPEND mode
-             CSVPrinter csvPrinter = new CSVPrinter(osw, CSVFormat.EXCEL
-                     .builder()
-                     .setQuoteMode(QuoteMode.MINIMAL)
-                     .setRecordSeparator(System.lineSeparator())
-                     .build())) {
-            
-            // No header needed in append mode
-            
-            RateLimiter limiter = RateLimiter.perSecond(context.getURLRatePerSecond());
-            
-            int currentIndex = 0;
-            for (CSVRecord record : parser) {
-                stats.totalFirmsInFile++;
-                
-                // Skip records until we reach the resume point
-                if (currentIndex < resumeInfo.getResumeIndex()) {
-                    currentIndex++;
-                    stats.firmsSkipped++;
-                    continue;
-                }
-                
-                String firmCrdNb = record.get("FirmCrdNb");
-                String firmName = record.get("Business Name");
-                
-                if (firmCrdNb != null && !firmCrdNb.trim().isEmpty()) {
-                    stats.firmsProcessed++;
-                    List<BrochureDownloadRecord> firmBrochures = extractBrochuresFromFirmAPI(firmCrdNb, firmName, context);
-                    
-                    if (firmBrochures.isEmpty()) {
-                        stats.firmsWithNoBrochures++;
-                    } else {
-                        stats.firmsWithBrochures++;
-                        stats.totalBrochuresFound += firmBrochures.size();
-                        
-                        // Track brochures per firm statistics
-                        if (firmBrochures.size() == 1) {
-                            stats.firmsWithOneBrochure++;
-                        } else if (firmBrochures.size() <= 5) {
-                            stats.firmsWithMultipleBrochures++;
-                        } else {
-                            stats.firmsWithManyBrochures++;
-                        }
-                        
-                        // Stream records immediately as they are created
-                        for (BrochureDownloadRecord brochureRecord : firmBrochures) {
-                            csvPrinter.printRecord(
-                                brochureRecord.getFirmId(),
-                                sanitizeValue(brochureRecord.getFirmName()),
-                                brochureRecord.getBrochureVersionId(),
-                                sanitizeValue(brochureRecord.getBrochureName()),
-                                brochureRecord.getDateSubmitted(),
-                                brochureRecord.getDateConfirmed()
-                            );
-                        }
-                        csvPrinter.flush(); // Ensure records are written immediately
-                    }
-                    
-                    context.incrementProcessedFirms();
-                    
-                    // Log progress periodically if verbose
-                    if (context.isVerbose() && stats.firmsProcessed % 100 == 0) {
-                        logProgressStats(stats, stats.totalBrochuresFound);
-                    }
-                    
-                    // Rate limiting
-                    limiter.acquire();
-                } else {
-                    stats.firmsSkipped++;
-                }
-                
-                currentIndex++;
-            }
-            
-            // Calculate final statistics
-            long endTime = System.currentTimeMillis();
-            stats.processingTimeMs = endTime - startTime;
-            
-            // Log comprehensive final statistics for resume mode
-            logResumeStats(stats, stats.totalBrochuresFound, outputFilePath, resumeInfo);
-            
-            return outputFilePath;
-            
-        } catch (Exception e) {
-            stats.processingErrors++;
-            context.setLastError("Error processing CSV file in resume mode: " + inputCsvFile.getName() + " - " + e.getMessage());
-            ProcessingLogger.logError("Error processing CSV file in resume mode: " + inputCsvFile.getName(), e);
-            throw new BrochureProcessingException("Error processing CSV file in resume mode: " + inputCsvFile.getName(), e);
-        }
-    }
-    
+
     /**
      * Processes firm data in normal mode - creates new FilesToDownload file
      * 
@@ -486,46 +344,6 @@ public class BrochureURLExtractionService {
         ProcessingLogger.logInfo("Total brochures found: " + totalBrochures);
         ProcessingLogger.logInfo("Average brochures per firm: " + 
             (stats.firmsWithBrochures > 0 ? String.format("%.2f", (double) totalBrochures / stats.firmsWithBrochures) : "0"));
-    }
-    
-    /**
-     * Logs comprehensive final statistics for resume mode
-     */
-    private void logResumeStats(ProcessingStats stats, int totalBrochures, Path outputFile, ResumeURLExtractionService.ResumeInfo resumeInfo) {
-        ProcessingLogger.logInfo("=== BROCHURE URL EXTRACTION RESUME COMPLETED ===");
-        ProcessingLogger.logInfo("Resume Information:");
-        ProcessingLogger.logInfo("  - Resumed from firm ID: " + resumeInfo.getLastCompleteFirmId());
-        ProcessingLogger.logInfo("  - Resume index: " + resumeInfo.getResumeIndex());
-        ProcessingLogger.logInfo("  - Total firms in input: " + resumeInfo.getTotalFirmsInInput());
-        ProcessingLogger.logInfo("  - Previously completed: " + resumeInfo.getCompletedFirms());
-        
-        ProcessingLogger.logInfo("Current Session Statistics:");
-        ProcessingLogger.logInfo("  - Firms processed this session: " + stats.firmsProcessed);
-        ProcessingLogger.logInfo("  - Firms skipped (before resume point): " + stats.firmsSkipped);
-        ProcessingLogger.logInfo("  - Firms with brochures: " + stats.firmsWithBrochures);
-        ProcessingLogger.logInfo("  - Firms with no brochures: " + stats.firmsWithNoBrochures);
-        ProcessingLogger.logInfo("  - Total brochures found this session: " + totalBrochures);
-        
-        ProcessingLogger.logInfo("Performance Statistics:");
-        ProcessingLogger.logInfo("  - Processing time: " + formatDuration(stats.processingTimeMs));
-        ProcessingLogger.logInfo("  - Average time per firm: " + 
-            (stats.firmsProcessed > 0 ? String.format("%.2f ms", (double) stats.processingTimeMs / stats.firmsProcessed) : "0 ms"));
-        ProcessingLogger.logInfo("  - Firms per second: " + 
-            (stats.processingTimeMs > 0 ? String.format("%.2f", (double) stats.firmsProcessed * 1000 / stats.processingTimeMs) : "0"));
-        
-        if (stats.processingErrors > 0) {
-            ProcessingLogger.logWarning("Processing errors encountered: " + stats.processingErrors);
-        }
-        
-        ProcessingLogger.logInfo("Output file (appended): " + outputFile);
-        ProcessingLogger.logInfo("Session success rate: " + String.format("%.1f%%", 
-            stats.firmsProcessed > 0 ? (double) stats.firmsWithBrochures * 100 / stats.firmsProcessed : 0));
-        
-        // Calculate overall progress
-        int totalProcessed = resumeInfo.getCompletedFirms() + stats.firmsProcessed;
-        double overallProgress = (double) totalProcessed * 100 / resumeInfo.getTotalFirmsInInput();
-        ProcessingLogger.logInfo("Overall progress: " + String.format("%.1f%%", overallProgress) + 
-            " (" + totalProcessed + "/" + resumeInfo.getTotalFirmsInInput() + " firms)");
     }
     
     /**

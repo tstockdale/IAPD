@@ -91,8 +91,8 @@ return current.after(historical);
 - **Incremental Mode**: `IA_FIRM_SEC_DATA_YYYYMMDD_incremental.csv`
 
 **Step 2 Output (Downloads)**:
-- **Regular Mode**: `IA_FIRM_SEC_DATA_YYYYMMDD_with_downloads.csv`
-- **Incremental Mode**: `IA_FIRM_SEC_DATA_YYYYMMDD_incremental_with_downloads.csv`
+- **Regular Mode**: `IA_FIRM_SEC_DATA_YYYYMMDD_with_status.csv`
+- **Incremental Mode**: `IA_FIRM_SEC_DATA_YYYYMMDD_incremental_with_status.csv`
 
 **Step 3 Output (Processing)**:
 - **Regular Mode**: Create new `IAPD_Data.csv`
@@ -137,7 +137,7 @@ if (context.isIncrementalDownloads() || context.isIncrementalProcessing()) {
 if (context.isIncrementalDownloads()) {
     // Use incremental input file from Step 1
     String inputFile = incrementalManager.generateIncrementalFileName("IA_FIRM_SEC_DATA", dateString, ".csv");
-    String outputFile = incrementalManager.generateIncrementalFileName("IA_FIRM_SEC_DATA", dateString, "_with_downloads.csv");
+    String outputFile = incrementalManager.generateIncrementalFileName("IA_FIRM_SEC_DATA", dateString, "_with_status.csv");
     
     // Download only for firms in incremental file
     downloadBrochures(inputFile, outputFile);
@@ -182,7 +182,7 @@ Output: IA_FIRM_SEC_DATA_20250107_incremental.csv
 
 === STEP 2: Brochure Downloading (Incremental) ===
 Downloading brochures for 1,644 firms
-Output: IA_FIRM_SEC_DATA_20250107_incremental_with_downloads.csv
+Output: IA_FIRM_SEC_DATA_20250107_incremental_with_status.csv
 
 === STEP 3: Brochure Processing (Incremental) ===
 Analyzing 1,644 brochures
@@ -227,7 +227,7 @@ public static class IncrementalStats {
 
 ✓ File name generation works correctly:
   - Incremental XML: IA_FIRM_SEC_DATA_20250107_incremental.csv
-  - Incremental downloads: IA_FIRM_SEC_DATA_20250107_incremental_with_downloads.csv
+  - Incremental downloads: IA_FIRM_SEC_DATA_20250107_incremental_status.csv
 
 ✓ Incremental statistics calculated accurately:
   - Total Current: 4, Historical: 3, New: 1, Updated: 2, Unchanged: 1, To Process: 3

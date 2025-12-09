@@ -1,5 +1,7 @@
 package com.iss.iapd.integration;
 
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
@@ -7,11 +9,8 @@ import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
-
-import com.iss.iapd.services.BrochureAnalyzerTest;
 import com.iss.iapd.config.ProcessingLoggerTest;
-import com.iss.iapd.config.CommandLineOptionsTest;
+import com.iss.iapd.services.BrochureAnalyzerTest;
 import com.iss.iapd.utils.RetryUtilsTest;
 
 
@@ -43,7 +42,6 @@ public class TestRunner {
         // Create launcher discovery request for all test classes
         LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
                 .selectors(
-                    selectClass(CommandLineOptionsTest.class),
                     selectClass(ProcessingLoggerTest.class),
                     selectClass(BrochureAnalyzerTest.class),
                     selectClass(RetryUtilsTest.class),

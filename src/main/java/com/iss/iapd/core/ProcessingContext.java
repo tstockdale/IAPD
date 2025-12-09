@@ -339,7 +339,6 @@ public class ProcessingContext {
         return builder()
                 .indexLimit(options.getIndexLimit())
                 .verbose(options.isVerbose())
-
                 .forceRestart(options.isForceRestart())
                 .incrementalUpdates(options.isIncrementalUpdates())
                 .incrementalDownloads(options.isIncrementalDownloads())

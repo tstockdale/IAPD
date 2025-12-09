@@ -84,11 +84,11 @@ public class ThreeStepProcessingTest {
         
         System.out.println("Step 2 Complete: Downloaded " + context.getSuccessfulDownloads() + " brochures, " + 
                           context.getFailedDownloads() + " failed");
-        System.out.println("Output: IA_FIRM_SEC_DATA_20250807_with_downloads.csv (contains download status)");
+        System.out.println("Output: IA_FIRM_SEC_DATA_20250807_with_status.csv (contains download status)");
         
         System.out.println("\n=== STEP 3: Brochure Processing (Analysis) ===");
         context.setCurrentPhase(ProcessingPhase.PROCESSING_BROCHURES);
-        context.setCurrentProcessingFile("IA_FIRM_SEC_DATA_20250807_with_downloads.csv");
+        context.setCurrentProcessingFile("IA_FIRM_SEC_DATA_20250807_with_status.csv");
         
         // Simulate processing downloaded brochures
         for (int i = 1; i <= context.getSuccessfulDownloads(); i++) {
@@ -120,7 +120,7 @@ public class ThreeStepProcessingTest {
         System.out.println();
         
         System.out.println("Step 2 Output → Step 3 Input:");
-        System.out.println("  IA_FIRM_SEC_DATA_20250807_with_downloads.csv");
+        System.out.println("  IA_FIRM_SEC_DATA_20250807_with_status.csv");
         System.out.println("  Contains: Firm data + BrochureURL + DownloadStatus columns");
         System.out.println();
         

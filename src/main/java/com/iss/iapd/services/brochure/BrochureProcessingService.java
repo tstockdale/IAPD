@@ -22,7 +22,6 @@ import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.exceptions.BrochureProcessingException;
 import com.iss.iapd.services.csv.CSVWriterService;
 import com.iss.iapd.services.csv.DualFileOutputService;
-import com.iss.iapd.services.incremental.ResumeStateManager;
 import com.iss.iapd.utils.PatternMatchers;
 import com.iss.iapd.utils.PdfTextExtractor;
 
@@ -65,13 +64,7 @@ public class BrochureProcessingService {
         statistics.startProcessing();
         
         try {
-            // Check if resume processing is enabled
-            if (context.isResumeProcessing()) {
-                statistics.recordResumedProcessing();
-                processBrochuresWithResume(inputFilePath, context);
-            } else {
-                processBrochuresStandard(inputFilePath, context);
-            }
+          processBrochuresStandard(inputFilePath, context);
         } finally {
             // Print comprehensive summary statistics
             statistics.printComprehensiveSummary();
@@ -112,75 +105,6 @@ public class BrochureProcessingService {
         }
     }
     
-    /**
-     * Processes brochures with resume capability
-     */
-    private void processBrochuresWithResume(Path inputFilePath, ProcessingContext context) throws BrochureProcessingException {
-        ResumeStateManager resumeManager = new ResumeStateManager();
-        Path outputFilePath = Paths.get(Config.BROCHURE_OUTPUT_PATH + "/" + "IAPD_Found.csv");
-        
-        // Load existing processed firms if resume file exists
-        java.util.Set<String> processedFirms = resumeManager.getProcessedFirms(outputFilePath);
-        
-        // Calculate resume statistics
-        int totalFirms = com.iss.iapd.utils.CsvUtils.countRecordsInFile(inputFilePath);
-        ResumeStateManager.ResumeStats stats = resumeManager.calculateProcessingResumeStats(totalFirms, processedFirms);
-        
-        // Log resume statistics
-        logProcessingResumeStats(stats, outputFilePath);
-        
-        try (Reader reader = Files.newBufferedReader(inputFilePath, StandardCharsets.UTF_8);
-             BufferedWriter writer = Files.newBufferedWriter(outputFilePath, StandardCharsets.UTF_8, 
-                     java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)) {
-            
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setQuoteMode(QuoteMode.MINIMAL)
-                    .build()
-                    .parse(reader);
-            
-            // Write header only if file is empty (new file)
-            if (processedFirms.isEmpty()) {
-                writer.write(Config.FOUND_FILE_HEADER + System.lineSeparator());
-            }
-            
-            int processedCount = 0;
-            int skippedCount = 0;
-            
-            for (CSVRecord csvRecord : records) {
-                String firmCrdNb = csvRecord.get("FirmCrdNb");
-                
-                if (processedFirms.contains(firmCrdNb)) {
-                    // Skip processing - already completed
-                    skippedCount++;
-                } else {
-                    // Process brochure
-                    processSingleBrochure(csvRecord, writer, context);
-                }
-                
-                processedCount++;
-                
-                // Log progress periodically if verbose
-                if (context.isVerbose() && processedCount % 50 == 0) {
-                    ProcessingLogger.logInfo("Processed " + processedCount + " records (" + skippedCount + " skipped, " + 
-                            (processedCount - skippedCount) + " analyzed)...");
-                    context.logCurrentState();
-                }
-            }
-            
-            ProcessingLogger.logInfo("Resume brochure processing completed. Processed " + processedCount + " records.");
-            ProcessingLogger.logInfo("Skipped " + skippedCount + " already processed firms.");
-            ProcessingLogger.logInfo("Analyzed " + (processedCount - skippedCount) + " new brochures.");
-            
-        } catch (Exception e) {
-            context.setLastError("Error in resume brochure processing from file: " + inputFilePath + " - " + e.getMessage());
-            throw new BrochureProcessingException("Error in resume brochure processing from file: " + inputFilePath, e);
-        }
-    }
-    
-
     
     /**
      * Processes a single brochure record
@@ -537,16 +461,5 @@ public class BrochureProcessingService {
             this.dateConfirmed = dateConfirmed != null ? dateConfirmed : "";
         }
     }
-    
-    /**
-     * Logs processing resume statistics in a formatted way
-     */
-    private void logProcessingResumeStats(ResumeStateManager.ResumeStats stats, Path resumeFile) {
-        ProcessingLogger.logInfo("=== RESUME PROCESSING MODE ===");
-        ProcessingLogger.logInfo("Resume File: " + resumeFile + " (checking already processed firms)");
-        ProcessingLogger.logInfo("Processing Resume Analysis:");
-        ProcessingLogger.logInfo("  - Total firms: " + stats.getTotalFirms());
-        ProcessingLogger.logInfo("  - Already processed: " + stats.getAlreadyCompleted() + " (skipped)");
-        ProcessingLogger.logInfo("  - Remaining to process: " + stats.getRemaining());
-    }
+
 }

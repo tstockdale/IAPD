@@ -18,7 +18,6 @@ import com.iss.iapd.config.ProcessingLogger;
 import com.iss.iapd.core.ProcessingContext;
 import com.iss.iapd.exceptions.BrochureProcessingException;
 import com.iss.iapd.services.download.FileDownloadService;
-import com.iss.iapd.services.incremental.ResumeStateManager;
 import com.iss.iapd.utils.PatternMatchers;
 import com.iss.iapd.utils.RateLimiter;
 import com.iss.iapd.utils.RetryUtils;
@@ -48,12 +47,7 @@ public class BrochureDownloadService {
         ProcessingLogger.logInfo("Starting brochure download from file: " + inputFilePath);
         context.setCurrentProcessingFile(inputFilePath.getFileName().toString());
         
-        // Check if resume downloads is enabled
-        if (context.isResumeDownloads()) {
-            return downloadBrochuresWithResume(inputFilePath, context);
-        } else {
-            return downloadBrochuresStandard(inputFilePath, context);
-        }
+        return downloadBrochuresStandard(inputFilePath, context);
     }
     
     /**
@@ -62,7 +56,7 @@ public class BrochureDownloadService {
     private Path downloadBrochuresStandard(Path inputFilePath, ProcessingContext context) throws BrochureProcessingException {
         // Create output file path
         String inputFileName = inputFilePath.getFileName().toString();
-        String outputFileName = inputFileName.replace(".csv", "_with_downloads.csv");
+        String outputFileName = inputFileName.replace(".csv", "_with_status.csv");
         Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
         try (Reader reader = Files.newBufferedReader(inputFilePath, StandardCharsets.UTF_8);
@@ -108,87 +102,7 @@ public class BrochureDownloadService {
         }
     }
     
-    /**
-     * Downloads brochures with resume capability
-     */
-    private Path downloadBrochuresWithResume(Path inputFilePath, ProcessingContext context) throws BrochureProcessingException {
-        ResumeStateManager resumeManager = new ResumeStateManager();
-        
-        // Create output file path
-        String inputFileName = inputFilePath.getFileName().toString();
-        String outputFileName = inputFileName.replace(".csv", "_with_downloads.csv");
-        Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
-        
-        // Load existing download status if resume file exists
-        Map<String, String> existingStatus = resumeManager.getDownloadStatus(outputFilePath);
-        
-        // Calculate resume statistics
-        int totalFirms = countRecordsInFile(inputFilePath);
-        ResumeStateManager.ResumeStats stats = resumeManager.calculateDownloadResumeStats(totalFirms, existingStatus, true);
-        
-        // Log resume statistics
-        logResumeStats(stats, outputFilePath);
-        
-        try (Reader reader = Files.newBufferedReader(inputFilePath, StandardCharsets.UTF_8);
-             BufferedWriter writer = Files.newBufferedWriter(outputFilePath, StandardCharsets.UTF_8)) {
-            
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setQuoteMode(QuoteMode.MINIMAL)
-                    .build()
-                    .parse(reader);
-            
-            // Write header with additional download status column
-            writer.write(Config.FIRM_HEADER + ",DownloadStatus" + System.lineSeparator());
-            
-            int processedCount = 0;
-            int skippedCount = 0;
-            RateLimiter limiter = RateLimiter.perSecond(context.getDownloadRatePerSecond());
-            
-            for (CSVRecord csvRecord : records) {
-                String firmCrdNb = csvRecord.get("FirmCrdNb");
-                String existingDownloadStatus = existingStatus.get(firmCrdNb);
-                
-                String downloadStatus;
-                if (existingDownloadStatus != null && !resumeManager.shouldRetryDownload(existingDownloadStatus)) {
-                    // Skip download - already completed successfully
-                    downloadStatus = existingDownloadStatus;
-                    skippedCount++;
-                } else {
-                    // Download or retry download
-                    downloadStatus = downloadSingleBrochure(csvRecord, context);
-                }
-                
-                writeFirmRecordWithDownloadStatus(writer, csvRecord, downloadStatus);
-                processedCount++;
-                
-                // Log progress periodically if verbose
-                if (context.isVerbose() && processedCount % 100 == 0) {
-                    ProcessingLogger.logInfo("Processed " + processedCount + " records (" + skippedCount + " skipped, " + 
-                            (processedCount - skippedCount) + " downloaded)...");
-                    context.logCurrentState();
-                }
-                
-                // Rate limiting (only for actual downloads)
-                if (existingDownloadStatus == null || resumeManager.shouldRetryDownload(existingDownloadStatus)) {
-                    limiter.acquire();
-                }
-            }
-            
-            ProcessingLogger.logInfo("Resume brochure download completed. Processed " + processedCount + " records.");
-            ProcessingLogger.logInfo("Skipped " + skippedCount + " already completed downloads.");
-            ProcessingLogger.logInfo("Downloaded " + (processedCount - skippedCount) + " new/retry downloads.");
-            ProcessingLogger.logInfo("Output file: " + outputFilePath);
-            
-            return outputFilePath;
-            
-        } catch (Exception e) {
-            context.setLastError("Error in resume brochure download from file: " + inputFilePath + " - " + e.getMessage());
-            throw new BrochureProcessingException("Error in resume brochure download from file: " + inputFilePath, e);
-        }
-    }
+   
     
     /**
      * Downloads a single brochure PDF file
@@ -284,33 +198,11 @@ public class BrochureDownloadService {
         writer.write(System.lineSeparator());
     }
     
-    /**
-     * Counts the number of records in a CSV file
-     */
-    private int countRecordsInFile(Path csvFile) {
-        int count = 0;
-        try (Reader reader = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
-            Iterable<CSVRecord> records = CSVFormat.EXCEL
-                    .builder()
-                    .setHeader()
-                    .setSkipHeaderRecord(true)
-                    .setQuoteMode(QuoteMode.MINIMAL)
-                    .build()
-                    .parse(reader);
-            
-            for (@SuppressWarnings("unused") CSVRecord ignored : records) {
-                count++;
-            }
-        } catch (Exception e) {
-            ProcessingLogger.logError("Error counting records in file: " + csvFile, e);
-        }
-        return count;
-    }
-    
+
     /**
      * Downloads brochures from FilesToDownload with resume capability
      * @param filesToDownloadPath path to FilesToDownload CSV file
-     * @param outputFilePath path to existing FilesToDownload_with_downloads.csv file to append to
+     * @param outputFilePath path to existing FilesToDownload_with_status.csv file to append to
      * @param startIndex index to start downloading from (0-based)
      * @param context processing context for configuration and state tracking
      * @return path to updated FilesToDownload file with download status and filename
@@ -441,7 +333,7 @@ public class BrochureDownloadService {
         
         // Create output file path
         String inputFileName = filesToDownloadPath.getFileName().toString();
-        String outputFileName = inputFileName.replace(".csv", "_with_downloads.csv");
+        String outputFileName = inputFileName.replace(".csv", "_with_status.csv");
         Path outputFilePath = Paths.get(Config.BROCHURE_INPUT_PATH, outputFileName);
         
         try (Reader reader = Files.newBufferedReader(filesToDownloadPath, StandardCharsets.UTF_8);
@@ -562,18 +454,5 @@ public class BrochureDownloadService {
         writer.write(downloadStatus + "," + fileName);
         writer.write(System.lineSeparator());
     }
-    
-    /**
-     * Logs resume statistics in a formatted way
-     */
-    private void logResumeStats(ResumeStateManager.ResumeStats stats, Path resumeFile) {
-        ProcessingLogger.logInfo("=== RESUME DOWNLOAD MODE ===");
-        ProcessingLogger.logInfo("Resume File: " + resumeFile + " (checking existing downloads)");
-        ProcessingLogger.logInfo("Download Resume Analysis:");
-        ProcessingLogger.logInfo("  - Total firms: " + stats.getTotalFirms());
-        ProcessingLogger.logInfo("  - Already completed: " + stats.getAlreadyCompleted() + " (skipped)");
-        ProcessingLogger.logInfo("  - Failed/retry needed: " + stats.getFailed() + " (will retry)");
-        ProcessingLogger.logInfo("  - Corrupted files: " + stats.getCorrupted() + " (will re-download)");
-        ProcessingLogger.logInfo("  - Remaining to download: " + stats.getRemaining());
-    }
+
 }

@@ -21,8 +21,8 @@ import org.junit.jupiter.api.io.TempDir;
 import com.iss.iapd.config.Config;
 import com.iss.iapd.model.FirmData;
 import com.iss.iapd.model.FirmDataBuilder;
-import com.iss.iapd.services.incremental.IncrementalUpdateManager;
-import com.iss.iapd.services.incremental.OutputDataReaderService;
+import com.iss.iapd.services.incremental.IncrementalProcessingService;
+import com.iss.iapd.services.incremental.BaselineDataReader;
 
 /**
  * Integration test to verify incremental mode compatibility with new header structures
@@ -32,13 +32,13 @@ public class IncrementalModeCompatibilityTest {
     @TempDir
     Path tempDir;
     
-    private IncrementalUpdateManager incrementalManager;
-    private OutputDataReaderService outputDataReader;
-    
+    private IncrementalProcessingService incrementalService;
+    private BaselineDataReader baselineReader;
+
     @BeforeEach
     void setUp() {
-        incrementalManager = new IncrementalUpdateManager();
-        outputDataReader = new OutputDataReaderService();
+        incrementalService = new IncrementalProcessingService();
+        baselineReader = new BaselineDataReader();
     }
     
     @Test
@@ -48,7 +48,8 @@ public class IncrementalModeCompatibilityTest {
         createBaselineFileWithNewFormat(baselineFile);
         
         // Verify the baseline file can be read correctly
-        Map<String, String> historicalDates = incrementalManager.getHistoricalFilingDates(baselineFile);
+        BaselineDataReader.BaselineData baselineData = baselineReader.readBaselineData(baselineFile);
+        Map<String, String> historicalDates = baselineData.getFilingDates();
         
         assertNotNull(historicalDates);
         assertEquals(3, historicalDates.size());
@@ -66,17 +67,17 @@ public class IncrementalModeCompatibilityTest {
         Path outputFile = tempDir.resolve("IAPD_Data_20250115.csv");
         createOutputFileWithNewFormat(outputFile);
         
-        // Test OutputDataReaderService functionality
-        OutputDataReaderService.OutputDataAnalysis analysis = outputDataReader.analyzeOutputDirectory(tempDir);
+        // Test BaselineDataReader functionality
+        BaselineDataReader.BaselineData analysis = baselineReader.readLatestBaselineData(tempDir);
         
         assertNotNull(analysis);
-        assertTrue(analysis.hasExistingData());
-        assertEquals("IAPD_Data_20250115.csv", analysis.getLatestFile().getFileName().toString());
+        assertTrue(analysis.hasData());
+        assertEquals("IAPD_Data_20250115.csv", analysis.getSourceFile().getFileName().toString());
         assertEquals("01/20/2025", analysis.getMaxDateSubmitted());
         assertEquals(3, analysis.getTotalRecords());
-        
+
         // Test brochureVersionId extraction
-        Set<String> brochureVersionIds = analysis.getExistingBrochureVersionIds();
+        Set<String> brochureVersionIds = analysis.getBrochureVersionIds();
         assertNotNull(brochureVersionIds);
         assertEquals(3, brochureVersionIds.size());
         assertTrue(brochureVersionIds.contains("123456"));
@@ -94,10 +95,11 @@ public class IncrementalModeCompatibilityTest {
         List<FirmData> currentFirms = createCurrentFirmData();
         
         // Get historical dates
-        Map<String, String> historicalDates = incrementalManager.getHistoricalFilingDates(baselineFile);
-        
+        BaselineDataReader.BaselineData baselineData = baselineReader.readBaselineData(baselineFile);
+        Map<String, String> historicalDates = baselineData.getFilingDates();
+
         // Test incremental logic
-        Set<String> firmsToProcess = incrementalManager.getFirmsToProcess(currentFirms, historicalDates);
+        Set<String> firmsToProcess = incrementalService.getFirmsToProcess(currentFirms, historicalDates);
         
         // Should process firms with newer filing dates or new firms
         assertNotNull(firmsToProcess);
@@ -106,7 +108,7 @@ public class IncrementalModeCompatibilityTest {
         assertFalse(firmsToProcess.contains("67890")); // Same filing date
         
         // Test statistics calculation
-        IncrementalUpdateManager.IncrementalStats stats = incrementalManager.calculateIncrementalStats(currentFirms, historicalDates);
+        IncrementalProcessingService.IncrementalStats stats = incrementalService.calculateIncrementalStats(currentFirms, historicalDates);
         assertNotNull(stats);
         assertEquals(4, stats.getTotalCurrentFirms());
         assertEquals(3, stats.getHistoricalFirms());
@@ -121,17 +123,17 @@ public class IncrementalModeCompatibilityTest {
         // Test with new format file
         Path newFormatFile = tempDir.resolve("IAPD_Data_new.csv");
         createOutputFileWithNewFormat(newFormatFile);
-        
-        assertTrue(outputDataReader.validateOutputFileStructure(newFormatFile));
-        assertTrue(incrementalManager.validateBaselineFileStructure(newFormatFile));
-        
+
+        assertTrue(baselineReader.validateFileStructure(newFormatFile));
+        assertTrue(incrementalService.validateBaselineFileStructure(newFormatFile));
+
         // Test with old format file (missing some new fields)
         Path oldFormatFile = tempDir.resolve("IAPD_Data_old.csv");
         createOldFormatFile(oldFormatFile);
-        
-        assertTrue(incrementalManager.validateBaselineFileStructure(oldFormatFile));
-        // OutputDataReader should still work with old format (falls back to Filing Date)
-        assertTrue(outputDataReader.validateOutputFileStructure(oldFormatFile));
+
+        assertTrue(incrementalService.validateBaselineFileStructure(oldFormatFile));
+        // BaselineDataReader should still work with old format (falls back to Filing Date)
+        assertTrue(baselineReader.validateFileStructure(oldFormatFile));
     }
     
     private void createBaselineFileWithNewFormat(Path file) throws IOException {

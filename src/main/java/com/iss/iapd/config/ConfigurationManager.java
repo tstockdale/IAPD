@@ -5,11 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
-import java.util.Set;
 
 import com.iss.iapd.core.ProcessingContext;
-import com.iss.iapd.services.incremental.OutputDataReaderService;
-import com.iss.iapd.utils.CsvUtils;
+import com.iss.iapd.services.incremental.BaselineDataReader;
 
 /**
  * Manages configuration from multiple sources with priority ordering:
@@ -195,36 +193,35 @@ public class ConfigurationManager {
     private void applyIncrementalProcessingConfiguration(ProcessingContext.Builder builder) {
         try {
             // Check for master file IAPD_Data.csv specifically
-            OutputDataReaderService outputReader = new OutputDataReaderService();
+            BaselineDataReader baselineReader = new BaselineDataReader();
             Path outputDirectory = Paths.get(Config.BROCHURE_OUTPUT_PATH);
             Path masterFile = outputDirectory.resolve("IAPD_Data.csv");
-            
+
             if (Files.exists(masterFile)) {
                 ProcessingLogger.logInfo("=== INCREMENTAL PROCESSING ENABLED ===");
                 ProcessingLogger.logInfo("Found master file: IAPD_Data.csv");
-                
-                // Extract brochure version IDs from master file
-                Set<String> existingBrochureVersionIds = outputReader.getBrochureVersionIds(masterFile);
-                int totalRecords = CsvUtils.countRecordsInFile(masterFile);
-                
-                ProcessingLogger.logInfo("Existing brochure version IDs: " + existingBrochureVersionIds.size());
-                ProcessingLogger.logInfo("Total existing records: " + totalRecords);
-                
+
+                // Read baseline data from master file
+                BaselineDataReader.BaselineData baselineData = baselineReader.readBaselineData(masterFile);
+
+                ProcessingLogger.logInfo("Existing brochure version IDs: " + baselineData.getBrochureVersionIds().size());
+                ProcessingLogger.logInfo("Total existing records: " + baselineData.getTotalRecords());
+
                 // Set incremental processing parameters
-                builder.existingBrochureVersionIds(existingBrochureVersionIds)
+                builder.existingBrochureVersionIds(baselineData.getBrochureVersionIds())
                        .hasExistingOutputData(true);
-                       
+
                 ProcessingLogger.logInfo("Incremental processing will filter brochures with existing brochureVersionIds");
             } else {
                 ProcessingLogger.logInfo("Master file IAPD_Data.csv not found - running in full processing mode");
                 builder.existingBrochureVersionIds(null)
                        .hasExistingOutputData(false);
             }
-            
+
         } catch (Exception e) {
             ProcessingLogger.logWarning("Error analyzing master file for incremental processing: " + e.getMessage());
             ProcessingLogger.logWarning("Falling back to full processing mode");
-            
+
             // Fall back to full processing mode
             builder.existingBrochureVersionIds(null)
                    .hasExistingOutputData(false);

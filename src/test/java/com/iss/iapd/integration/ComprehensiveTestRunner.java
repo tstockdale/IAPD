@@ -1,13 +1,13 @@
 package com.iss.iapd.integration;
 
+import com.iss.iapd.config.ConfigurationManager;
+import com.iss.iapd.core.ProcessingContext;
+import com.iss.iapd.model.ProcessingPhase;
 import com.iss.iapd.services.brochure.BrochureAnalysis;
 import com.iss.iapd.services.brochure.BrochureAnalyzer;
+import com.iss.iapd.services.incremental.IncrementalProcessingService;
+import com.iss.iapd.utils.DateComparator;
 import com.iss.iapd.utils.PatternMatchers;
-import com.iss.iapd.services.incremental.ResumeStateManager;
-import com.iss.iapd.services.incremental.IncrementalUpdateManager;
-import com.iss.iapd.core.ProcessingContext;
-import com.iss.iapd.config.ConfigurationManager;
-import com.iss.iapd.model.ProcessingPhase;
 
 /**
  * Comprehensive test runner for all IAPD unit tests
@@ -134,17 +134,15 @@ public class ComprehensiveTestRunner {
         System.out.println("=== TESTING NEW FUNCTIONALITY ===");
         System.out.println();
         
-        // Test IncrementalUpdateManager
-        System.out.println("Testing IncrementalUpdateManager...");
+        // Test DateComparator and IncrementalProcessingService
+        System.out.println("Testing DateComparator and IncrementalProcessingService...");
         System.out.println(shortSeparator);
-        
+
         try {
-            IncrementalUpdateManager incrementalManager = new IncrementalUpdateManager();
-            
-            // Test date parsing
-            java.util.Date date1 = incrementalManager.parseFilingDate("01/15/2024");
-            java.util.Date date2 = incrementalManager.parseFilingDate("01/14/2024");
-            
+            // Test date parsing using DateComparator
+            java.util.Date date1 = DateComparator.parseFilingDate("01/15/2024");
+            java.util.Date date2 = DateComparator.parseFilingDate("01/14/2024");
+
             totalTests++;
             if (date1 != null && date2 != null) {
                 System.out.println("  PASS: Date parsing works correctly");
@@ -153,67 +151,24 @@ public class ComprehensiveTestRunner {
                 System.out.println("  FAIL: Date parsing failed");
                 failedTests++;
             }
-            
+
             // Test date comparison
             totalTests++;
-            if (incrementalManager.isFilingDateMoreRecent("01/15/2024", "01/14/2024")) {
+            if (DateComparator.isFilingDateMoreRecent("01/15/2024", "01/14/2024")) {
                 System.out.println("  PASS: Date comparison works correctly");
                 passedTests++;
             } else {
                 System.out.println("  FAIL: Date comparison incorrect");
                 failedTests++;
             }
-            
+
         } catch (Exception e) {
-            System.out.println("  ERROR: IncrementalUpdateManager test failed: " + e.getMessage());
+            System.out.println("  ERROR: DateComparator test failed: " + e.getMessage());
             failedTests++;
         }
         
         System.out.println();
         
-        // Test ResumeStateManager
-        System.out.println("Testing ResumeStateManager...");
-        System.out.println(shortSeparator);
-        
-        try {
-            ResumeStateManager resumeManager = new ResumeStateManager();
-            
-            // Test retry logic
-            totalTests++;
-            if (resumeManager.shouldRetryDownload("FAILED") && 
-                !resumeManager.shouldRetryDownload("SUCCESS")) {
-                System.out.println("  PASS: Download retry logic works correctly");
-                passedTests++;
-            } else {
-                System.out.println("  FAIL: Download retry logic incorrect");
-                failedTests++;
-            }
-            
-            // Test resume statistics calculation
-            java.util.Map<String, String> statusMap = new java.util.HashMap<>();
-            statusMap.put("12345", "SUCCESS");
-            statusMap.put("67890", "FAILED");
-            statusMap.put("11111", "SKIPPED");
-            
-            ResumeStateManager.ResumeStats stats = 
-                    resumeManager.calculateDownloadResumeStats(5, statusMap, false);
-            
-            totalTests++;
-            if (stats.getTotalFirms() == 5 && stats.getAlreadyCompleted() == 2 && 
-                stats.getFailed() == 1 && stats.getRemaining() == 2) {
-                System.out.println("  PASS: Resume statistics calculation works correctly");
-                passedTests++;
-            } else {
-                System.out.println("  FAIL: Resume statistics calculation incorrect");
-                failedTests++;
-            }
-            
-        } catch (Exception e) {
-            System.out.println("  ERROR: ResumeStateManager test failed: " + e.getMessage());
-            failedTests++;
-        }
-        
-        System.out.println();
         
         // Test PatternMatchers
         System.out.println("Testing PatternMatchers...");
