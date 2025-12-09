@@ -83,7 +83,7 @@ test*.out
 # Application specific files
 # Downloaded IAPD data files
 *.gz
-*.csv
+# *.csv
 
 # PDF brochure files
 *.pdf
