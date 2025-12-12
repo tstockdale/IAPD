@@ -195,7 +195,7 @@ public class BrochureURLExtractionService {
                         throw new RuntimeException("Non-transient error calling FIRM_API for firm " + firmCrdNb, e);
                     }
                 }
-            }, "Extract brochures from FIRM_API for firm " + firmCrdNb);
+            }, 5, 60000, "Extract brochures from FIRM_API for firm " + firmCrdNb);
             
             if (jsonResponse != null && !jsonResponse.trim().isEmpty()) {
                 brochures = parseFirmAPIResponse(jsonResponse, firmCrdNb, firmName, context);

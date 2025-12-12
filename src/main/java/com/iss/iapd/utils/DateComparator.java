@@ -12,7 +12,7 @@ import com.iss.iapd.config.ProcessingLogger;
  */
 public class DateComparator {
 
-    private static final String DATE_FORMAT = "MM/dd/yyyy";
+    private static final String DATE_FORMAT = "yyyy-MM-dd";
     private static final SimpleDateFormat dateFormatter = new SimpleDateFormat(DATE_FORMAT);
 
     // Configure formatter for strict parsing
@@ -21,7 +21,7 @@ public class DateComparator {
     }
 
     /**
-     * Parses a filing date string in MM/dd/yyyy format
+     * Parses a filing date string in MM-dd-yyyy format
      * @param dateString the date string to parse
      * @return parsed Date object, or null if parsing fails
      */
@@ -32,9 +32,9 @@ public class DateComparator {
 
         String trimmed = dateString.trim();
 
-        // Check if the format matches MM/dd/yyyy pattern
-        if (!trimmed.matches("\\d{2}/\\d{2}/\\d{4}")) {
-            ProcessingLogger.logWarning("Invalid date format: " + dateString + " (expected MM/dd/yyyy)");
+        // Check if the format matches yyyy-MM-dd pattern
+        if (!trimmed.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            ProcessingLogger.logWarning("Invalid date format: " + dateString + " (expected yyyy-MM-dd)");
             return null;
         }
 
