@@ -244,6 +244,7 @@ public class HttpUtils {
                 String retryAfter = connection.getHeaderField("Retry-After");
                 long retryDelayMs = parseRetryAfter(retryAfter);
                 ProcessingLogger.logWarning("Rate limited (429). Retry after: " + retryDelayMs + "ms");
+                ProcessingLogger.logWarning(response.toString());
                 
                 if (retryDelayMs > 0) {
                     Thread.sleep(retryDelayMs);
