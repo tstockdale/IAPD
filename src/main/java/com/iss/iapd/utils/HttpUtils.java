@@ -244,7 +244,7 @@ public class HttpUtils {
                 String retryAfter = connection.getHeaderField("Retry-After");
                 long retryDelayMs = parseRetryAfter(retryAfter);
                 ProcessingLogger.logWarning("Rate limited (429). Retry after: " + retryDelayMs + "ms");
-                ProcessingLogger.logWarning(response.toString());
+                ProcessingLogger.logWarning(connection.getHeaderFields().toString() );
                 
                 if (retryDelayMs > 0) {
                     Thread.sleep(retryDelayMs);
@@ -315,6 +315,8 @@ public class HttpUtils {
                 String retryAfter = connection.getHeaderField("Retry-After");
                 long retryDelayMs = parseRetryAfter(retryAfter);
                 ProcessingLogger.logWarning("Download rate limited (429). Retry after: " + retryDelayMs + "ms");
+                ProcessingLogger.logWarning(connection.getHeaderFields().toString() );
+                
                 
                 if (retryDelayMs > 0) {
                     Thread.sleep(retryDelayMs);
