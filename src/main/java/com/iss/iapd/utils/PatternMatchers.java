@@ -41,7 +41,7 @@ public final class PatternMatchers {
     public static final String EMAIL_PROXY_SENTENCE_MATCHER = "(?:(.{10}\\.[^.]{1,300}[Pp]roxy[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}\\.)|(.{10}\\.[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}[Pp]roxy[^.]{1,300}\\.))";
     public static final String EMAIL_BROCHURE_SENTENCE_MATCHER = "(?:(.{10}\\.[^.]{1,300}(?:[Bb]rochure|[Qq]uestion)[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}\\.)|(.{10}\\.[^.]{1,300}[\\p{L}\\p{N}\\._%+-]+@[\\p{L}\\p{N}\\.\\-]+\\.[\\p{L}]{2,}[^.]{1,300}(?:[Bb]rochure|[Qq]uestion)[^.]{1,300}\\.))";
     public static final String EMAIL_MATCHER = "(" + EMAIL_PATTERN_BASE + ")";
-    public static final String NO_VOTE_MATCHER = "(?:abstain|not vote|do not vote|will not vote|may not vote|not[^.]{1,15}vote)";
+    public static final String NO_VOTE_MATCHER = "(Item 17.{1,500}(?:abstain|not vote|do not vote|will not vote|may not vote|not[^.]{1,15}vote).{1,500}Item 18)";
     public static final String CUSTODIAL_SERVICES_MATCHER = ".{0,200}ustodial.{0,30}services.{0,200}";
     public static final String BRCHR_VERSION_ID_MATCHER = "BRCHR_VRSN_ID=(\\d+)";
     
