@@ -29,7 +29,7 @@ public final class PatternMatchers {
     public static final String PROXYEDGE_MATCHER = "Proxy\\s?Edge";
     public static final String EGAN_JONES_MATCHER = "Egan[\\s-]Jones Proxy";
     public static final String ISS_PROXY_MATCHER_OLD =  "(?:(?:[Pp]rox[iy]|recommendation)[^.]*?ISS|ISS[^.]*?(?:[Pp]rox[iy]|recommendation)|(?:[Pp]rox[iy]|recommendation)[^.]*?Institutional Shareholder Services|Institutional Shareholder Services[^.]*?(?:[Pp]rox[iy]|recommendation))";
-    public static final String ISS_PROXY_MATCHER = "(?:(?:proxy|recommendation)[^.]*?(?:ISS|Institutional Shareholder Services)|(?:ISS|Institutional Shareholder Services)[^.]*?(?:proxy|recommendation))";
+    public static final String ISS_PROXY_MATCHER = "(?:(?:[Pp]rox[iy]|recommendation)[^.]*?(?:ISS|Institutional Shareholder Services)|(?:ISS|Institutional Shareholder Services)[^.]*?(?:[Pp]rox[iy]|recommendation))";
     public static final String FRT_MATCHER = createClassActionPattern("(?:FRT|Financial Recovery Technologies)");
     public static final String BATTEA_MATCHER = createClassActionPattern("Battea");
     public static final String CCC_MATCHER = createClassActionPattern("CCC");
